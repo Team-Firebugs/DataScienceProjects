@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<title>STUDY DESIGN</title>
+
+<script type="text/javascript">
+window.onload = function() {
+  var imgs = document.getElementsByTagName('img'), i, img;
+  for (i = 0; i < imgs.length; i++) {
+    img = imgs[i];
+    // center an image if it is the only element of its parent
+    if (img.parentElement.childElementCount === 1)
+      img.parentElement.style.textAlign = 'center';
+  }
+};
+</script>
+
+
+
+
+
+<style type="text/css">
+body, td {
+   font-family: sans-serif;
+   background-color: white;
+   font-size: 13px;
+}
+
+body {
+  max-width: 800px;
+  margin: auto;
+  padding: 1em;
+  line-height: 20px;
+}
+
+tt, code, pre {
+   font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace;
+}
+
+h1 {
+   font-size:2.2em;
+}
+
+h2 {
+   font-size:1.8em;
+}
+
+h3 {
+   font-size:1.4em;
+}
+
+h4 {
+   font-size:1.0em;
+}
+
+h5 {
+   font-size:0.9em;
+}
+
+h6 {
+   font-size:0.8em;
+}
+
+a:visited {
+   color: rgb(50%, 0%, 50%);
+}
+
+pre, img {
+  max-width: 100%;
+}
+pre {
+  overflow-x: auto;
+}
+pre code {
+   display: block; padding: 0.5em;
+}
+
+code {
+  font-size: 92%;
+  border: 1px solid #ccc;
+}
+
+code[class] {
+  background-color: #F8F8F8;
+}
+
+table, td, th {
+  border: none;
+}
+
+blockquote {
+   color:#666666;
+   margin:0;
+   padding-left: 1em;
+   border-left: 0.5em #EEE solid;
+}
+
+hr {
+   height: 0px;
+   border-bottom: none;
+   border-top-width: thin;
+   border-top-style: dotted;
+   border-top-color: #999999;
+}
+
+@media print {
+   * {
+      background: transparent !important;
+      color: black !important;
+      filter:none !important;
+      -ms-filter: none !important;
+   }
+
+   body {
+      font-size:12pt;
+      max-width:100%;
+   }
+
+   a, a:visited {
+      text-decoration: underline;
+   }
+
+   hr {
+      visibility: hidden;
+      page-break-before: always;
+   }
+
+   pre, blockquote {
+      padding-right: 1em;
+      page-break-inside: avoid;
+   }
+
+   tr, img {
+      page-break-inside: avoid;
+   }
+
+   img {
+      max-width: 100% !important;
+   }
+
+   @page :left {
+      margin: 15mm 20mm 15mm 10mm;
+   }
+
+   @page :right {
+      margin: 15mm 10mm 15mm 20mm;
+   }
+
+   p, h2, h3 {
+      orphans: 3; widows: 3;
+   }
+
+   h2, h3 {
+      page-break-after: avoid;
+   }
+}
+</style>
+
+
+
+</head>
+
+<body>
+<p>&nbsp;</p>
+
+<h2>STUDY DESIGN</h2>
+
+<p>The data represent data collected from the accelerometers from the Samsung Galaxy S smartphone. A full description is available at the site where the data was obtained: </p>
+
+<p><a href="http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones">http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones</a></p>
+
+<p>The data used for this project are available here :
+<a href="https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip">https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip</a></p>
+
+<p>Once you&#39;ve unzip this document, you obtain a folder named &ldquo;UCI HAR Dataset&rdquo;.
+In this folder, you will find the following files :</p>
+
+<ul>
+<li>&#39;README.txt&#39;</li>
+<li>&#39;features_info.txt&#39;: Shows information about the variables used on the feature vector.</li>
+<li>&#39;features.txt&#39;: List of all features.</li>
+<li>&#39;activity_labels.txt&#39;: Links the class labels with their activity name.</li>
+<li>&#39;train/X_train.txt&#39;: Training set.</li>
+<li>&#39;train/y_train.txt&#39;: Training labels.</li>
+<li>&#39;test/X_test.txt&#39;: Test set.</li>
+<li>&#39;test/y_test.txt&#39;: Test labels.</li>
+</ul>
+
+<p>The following files are available for the train and test data. Their descriptions are equivalent. </p>
+
+<ul>
+<li>&#39;train/subject_train.txt&#39;: Each row identifies the subject who performed the activity for each window sample. Its range is from 1 to 30. </li>
+<li>&#39;train/Inertial Signals/total_acc_x_train.txt&#39;: The acceleration signal from the smartphone accelerometer X axis in standard gravity units &#39;g&#39;. Every row shows a 128 element vector. The same description applies for the &#39;total_acc_x_train.txt&#39; and &#39;total_acc_z_train.txt&#39; files for the Y and Z axis. </li>
+<li>&#39;train/Inertial Signals/body_acc_x_train.txt&#39;: The body acceleration signal obtained by subtracting the gravity from the total acceleration. </li>
+<li>&#39;train/Inertial Signals/body_gyro_x_train.txt&#39;: The angular velocity vector measured by the gyroscope for each window sample. The units are radians/second. </li>
+</ul>
+
+<p><em>Notes:</em></p>
+
+<ul>
+<li><em>Features are normalized and bounded within [-1,1].</em></li>
+<li><em>Each feature vector is a row on the text file.</em></li>
+</ul>
+
+<p>&nbsp;</p>
+
+<h2>VARIABLES</h2>
+
+<p>Here is a description of the data used in this analysis, and that you can find in the dataset.</p>
+
+<h3>ID Fields</h3>
+
+<ul>
+<li>1 - activity: chr<br/>
+&ldquo;laying&rdquo; &ldquo;sitting&rdquo; &ldquo;standing&rdquo; &ldquo;walking&rdquo; &ldquo;walkingDownstairs&rdquo; &ldquo;walkingUpstairs&rdquo;</li>
+<li>2 - subject: int 
+from 1 to 30</li>
+</ul>
+
+<h3>Extracted Feature Fields</h3>
+
+<p>units &#39;g&#39;</p>
+
+<ul>
+<li>3 - tBodyAccMeanX: num</li>
+<li>4 - tBodyAccMeanY: num</li>
+<li>5 - tBodyAccMeanZ: num</li>
+<li>6 - tBodyAccStdX: num</li>
+<li>7 - tBodyAccStdY: num</li>
+<li>8 - tBodyAccStdZ: num</li>
+<li>9 - tGravityAccMeanX: num</li>
+<li>10 - tGravityAccMeanY: num</li>
+<li>11 - tGravityAccMeanZ: num</li>
+<li>12 - tGravityAccStdX: num</li>
+<li>13 - tGravityAccStdY: num</li>
+<li>14 - tGravityAccStdZ: num</li>
+<li>15 - tBodyAccJerkMeanX: num</li>
+<li>16 - tBodyAccJerkMeanY: num</li>
+<li>17 - tBodyAccJerkMeanZ: num</li>
+<li>18 - tBodyAccJerkStdX: num</li>
+<li>19 - tBodyAccJerkStdY: num</li>
+<li>20 - tBodyAccJerkStdZ: num</li>
+<li>21 - tBodyGyroMeanX: num</li>
+<li>22 - tBodyGyroMeanY: num</li>
+<li>23 - tBodyGyroMeanZ: num</li>
+<li>24 - tBodyGyroStdX: num</li>
+<li>25 - tBodyGyroStdY: num</li>
+<li>26 - tBodyGyroStdZ: num</li>
+<li>27 - tBodyGyroJerkMeanX: num</li>
+<li>28 - tBodyGyroJerkMeanY: num</li>
+<li>29 - tBodyGyroJerkMeanZ: num</li>
+<li>30 - tBodyGyroJerkStdX: num</li>
+<li>31 - tBodyGyroJerkStdY: num</li>
+<li>32 - tBodyGyroJerkStdZ: num</li>
+<li>33 - tBodyAccMagMean: num</li>
+<li>34 - tBodyAccMagStd: num</li>
+<li>35 - tGravityAccMagMean: num</li>
+<li>36 - tGravityAccMagStd: num</li>
+<li>37 - tBodyAccJerkMagMean: num</li>
+<li>38 - tBodyAccJerkMagStd: num</li>
+<li>39 - tBodyGyroMagMean: num</li>
+<li>40 - tBodyGyroMagStd: num</li>
+<li>41 - tBodyGyroJerkMagMean: num</li>
+<li>42 - tBodyGyroJerkMagStd: num</li>
+<li>43 - fBodyAccMeanX: num</li>
+<li>44 - fBodyAccMeanY: num</li>
+<li>45 - fBodyAccMeanZ: num</li>
+<li>46 - fBodyAccStdX: num</li>
+<li>47 - fBodyAccStdY: num</li>
+<li>48 - fBodyAccStdZ: num</li>
+<li>49 - fBodyAccJerkMeanX: num</li>
+<li>50 - fBodyAccJerkMeanY: num</li>
+<li>51 - fBodyAccJerkMeanZ: num</li>
+<li>52 - fBodyAccJerkStdX: num</li>
+<li>53 - fBodyAccJerkStdY: num</li>
+<li>54 - fBodyAccJerkStdZ: num</li>
+<li>55 - fBodyGyroMeanX: num</li>
+<li>56 - fBodyGyroMeanY: num</li>
+<li>57 - fBodyGyroMeanZ: num</li>
+<li>58 - fBodyGyroStdX: num</li>
+<li>59 - fBodyGyroStdY: num</li>
+<li>60 - fBodyGyroStdZ: num</li>
+<li>61 - fBodyAccMagMean: num</li>
+<li>62 - fBodyAccMagStd: num</li>
+<li>63 - fBodyBodyAccJerkMagMean: num</li>
+<li>64 - fBodyBodyAccJerkMagStd: num</li>
+<li>65 - fBodyBodyGyroMagMean: num</li>
+<li>66 - fBodyBodyGyroMagStd: num</li>
+<li>67 - fBodyBodyGyroJerkMagMean: num</li>
+<li>68 - fBodyBodyGyroJerkMagStd: num</li>
+</ul>
+
+<p>&nbsp;</p>
+
+<h2>HOW DOES THE &ldquo;run_analysis.R&rdquo; FILE WORKS</h2>
+
+<h3>Step1 - Merger of the training and the test sets to create one data set.</h3>
+
+<ul>
+<li><p>First we read the different txt files and we get sure that the dimensions corresponds to what we expect:</p>
+
+<ul>
+<li>X_train.txt : dim = 7352 * 561</li>
+<li>subject_train.txt : dim = 7352 * 1</li>
+<li>y_train.txt : dim = 7352 * 1</li>
+<li>X_test.txt : dim = 2947 * 561</li>
+<li>subject_test.txt : dim = 2947 * 1</li>
+<li>y_test.tx : dim = 2947 * 1</li>
+</ul></li>
+<li><p>Then We merge the training and the test datasets
+(We have now merged the training and the test. We still have to complete the dataset by adding the Subject column and the Label column. We&#39;ll do this after the step 2 so that it&#39;s easier to remove all the non-mean and non-standard measuring columns.)</p></li>
+</ul>
+
+<h3>Step2 - Extraction of only the measurements on the mean and standard deviation for each measurement.</h3>
+
+<ul>
+<li>We first read the file containing the features names</li>
+<li>Then we get the indices for all the features with mean and std measurements</li>
+<li>We make the new dataset by selecting only the features we&#39;re interested in and that we have selected just before</li>
+<li>Then we add the Label and the Subject columns to the dataset. But before, we are going to put features names on top of the columns of the set.</li>
+</ul>
+
+<h3>Step 3 - Use of descriptive activity names to name the activities in the data set</h3>
+
+<ul>
+<li>We first read the activity labels dataset</li>
+<li>Then we substitute the &ldquo;-&rdquo; by &ldquo;&rdquo; in the labels</li>
+<li><p>Finally, for the 2 labels which are composed of 2 words, we change the first letter of the second word by an uppercase</p></li>
+<li><p>We then add the activity column by merging</p></li>
+<li><p>And we add the activity column to the dataset by merging</p></li>
+<li><p>We delete the first column of the dataset which contains the number associated with the activity, which we don&#39;t need because we&#39;ve add the activity name.</p></li>
+</ul>
+
+<h3>Step 4 - Appropriate labeling of the data set with descriptive variable names.</h3>
+
+<p>For each name in the features list :</p>
+
+<ul>
+<li>We delete parentheses</li>
+<li>Wer replace &ldquo;mean&rdquo; by &ldquo;Mean&rdquo;</li>
+<li>We replace &ldquo;std&rdquo; by &ldquo;Std&rdquo;</li>
+<li>We delete the &ldquo;-&rdquo;</li>
+<li>We then reorder the data columns</li>
+</ul>
+
+<p>The dataset created is named <strong>mergeDataFinal</strong></p>
+
+<h3>Step 5 - From the data set in step 4, creation of a second, independent tidy data set with the average of each variable for each activity and each subject.</h3>
+
+<ul>
+<li>Here, we create a matrix to present the data.
+As we compute the average for each activity and each subject, the matrix must
+have 180 rows = 6 * 30 (6 activities and 30 subjects). The number of columns is equal to the number of features. 
+This matrix is named <strong>mat</strong></li>
+<li>Finally, we write this &ldquo;mat&rdquo; dataframe into the &ldquo;tidyDataSet.txt&rdquo; file which is created in our working directory.</li>
+</ul>
+
+<p>&nbsp;</p>
+
+<h2>CONTEXT - PROJECT ASSIGNMENT</h2>
+
+<p>The purpose of this project is to demonstrate your ability to collect, work with, and clean a data set. The goal is to prepare tidy data that can be used for later analysis. You will be graded by your peers on a series of yes/no questions related to the project. You will be required to submit: 1) a tidy data set as described below, 2) a link to a Github repository with your script for performing the analysis, and 3) a code book that describes the variables, the data, and any transformations or work that you performed to clean up the data called CodeBook.md. You should also include a README.md in the repo with your scripts. This repo explains how all of the scripts work and how they are connected.  </p>
+
+<p>One of the most exciting areas in all of data science right now is wearable computing - see for example this article . Companies like Fitbit, Nike, and Jawbone Up are racing to develop the most advanced algorithms to attract new users. The data linked to from the course website represent data collected from the accelerometers from the Samsung Galaxy S smartphone. A full description is available at the site where the data was obtained: </p>
+
+<p><a href="http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones">http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones</a></p>
+
+<p>&nbsp;</p>
+
+<h2>LICENCE</h2>
+
+<p>Use of this dataset in publications must be acknowledged by referencing the following publication [1] </p>
+
+<p>[1] Davide Anguita, Alessandro Ghio, Luca Oneto, Xavier Parra and Jorge L. Reyes-Ortiz. Human Activity Recognition on Smartphones using a Multiclass Hardware-Friendly Support Vector Machine. International Workshop of Ambient Assisted Living (IWAAL 2012). Vitoria-Gasteiz, Spain. Dec 2012</p>
+
+<p>This dataset is distributed AS-IS and no responsibility implied or explicit can be addressed to the authors or their institutions for its use or misuse. Any commercial use is prohibited.</p>
+
+<p>Jorge L. Reyes-Ortiz, Alessandro Ghio, Luca Oneto, Davide Anguita. November 2012.</p>
+
+</body>
+
+</html>

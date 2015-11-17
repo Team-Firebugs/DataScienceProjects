@@ -1,0 +1,181 @@
+---
+title: "SI_project_part2"
+author: "RDSN"
+date: "20 October 2015"
+output: html_document
+---
+&nbsp;
+&nbsp;
+&nbsp;
+
+## Description
+
+&nbsp;
+
+The response is the length of odontoblasts (teeth) in each of 10 guinea pigs at each of three dose levels of Vitamin C (0.5, 1, and 2 mg) with each of two delivery methods (orange juice or ascorbic acid).
+
+&nbsp;
+
+## 1. Load the ToothGrowth data and perform some basic exploratory data analyses
+
+&nbsp;
+
+Loading the ToothGrowth data
+```{r, echo=TRUE}
+data("ToothGrowth")
+```
+
+
+Let's have a look at the first rows of this data set
+```{r, echo=TRUE}
+head(ToothGrowth)
+```
+
+
+And its structure
+```{r, echo=TRUE}
+str(ToothGrowth)
+```
+So we've got here 60 observations and 3 variables.
+
+&nbsp;
+
+```{r, echo=TRUE}
+table(ToothGrowth$dose)
+```
+
+So we see here that the numerical variable "dose" has only 3 values : 0.5, 1, 2.
+
+
+By looking at the entire dataset, we can observe that indeed, this dataset is about 10 subjects. Every 10 rows, the numerical value of the dose change. Every 30 rows, the value of the supp variable (method) changes.
+
+To have an idea of the data, we can plot the evolution of the average length depending on the method and the dose of vitamin C.
+
+&nbsp;
+
+```{r, echo=TRUE,fig.width=6, fig.height = 3, fig.align='center'}
+av <- aggregate(len ~ supp + dose, data = ToothGrowth, mean)
+
+library(ggplot2)
+
+g <- ggplot(data = av, aes(x = dose, y = len, col = supp)) + geom_line()
+g
+```
+
+
+We can see here that the average length is larger with the method "OJ" (Orange Juice), than with the ascorbic acid.
+We can also observe that the more important the dose of Vitamin C, the more important the average length.
+
+&nbsp;
+
+## 2. Provide a basic summary of the data
+
+&nbsp;
+
+```{r, echo=TRUE}
+
+summary(ToothGrowth)
+
+```
+
+
+&nbsp;
+
+## 3. Use confidence intervals and/or hypothesis tests to compare tooth growth by supp and dose. (Only use the techniques from class, even if there's other approaches worth considering)
+
+&nbsp;
+
+### 3.1 Supp
+
+&nbsp;
+
+First, we are going to compare the 2 levels of supp.
+&nbsp;
+
+```{r, echo=TRUE}
+g1 <- ToothGrowth[ToothGrowth$supp == "OJ", "len"]
+g2 <- ToothGrowth[ToothGrowth$supp == "VC", "len"]
+
+t.test(g2, g1)
+```
+Here, we have a confidence interval from -7.57 to 0.17, so 0 is inside the confidence interval. 
+p-value = 0.06 
+What it means is that we don't have enough evidence to reject the null H0 hypothesis, the null hypothesis being that the mean of the 2 groups are equal. And so we can't say that the difference in the mean of the 2 groups is significant.
+
+
+&nbsp;
+
+### 3.2 Dose
+
+&nbsp;
+
+Let's do the same with the dose values. As we have 3 dose values, we must perform here 3 different t.test, one for each pair.
+&nbsp;
+
+```{r, echo=TRUE}
+gd1 <- ToothGrowth[ToothGrowth$dose == 0.5, "len"]
+gd2 <- ToothGrowth[ToothGrowth$dose == 1, "len"]
+gd3 <- ToothGrowth[ToothGrowth$dose == 2, "len"]
+
+t.test(gd2, gd1, paired = TRUE)
+t.test(gd3, gd2, paired = TRUE)
+t.test(gd3, gd1, paired = TRUE)
+```
+* Note that we have considered here that the values are paired, because each group is represented by the same pigs (10 ginea pigs).
+If we had considered it not paired, the values of the intervals would not have been much different :
+
+```{r, echo=TRUE}
+rbind(t.test(gd2, gd1, paired = TRUE)$conf.int, t.test(gd2, gd1, paired = FALSE)$conf.int)
+
+rbind(t.test(gd3, gd2, paired = TRUE)$conf.int,t.test(gd3, gd2, paired = FALSE)$conf.int)
+
+rbind(t.test(gd3, gd1, paired = TRUE)$conf.int, t.test(gd3, gd1, paired = FALSE)$conf.int)
+```
+Furthermore, we see here that for each t.test, 0 is not included in the confidence interval, and each p-value is very small. This means that we can reject the null hypothesis (H0) and so we can say that the difference in the means of the different groups is significant.
+
+&nbsp;
+
+## 4. State your conclusions and the assumptions needed for your conclusions.
+
+&nbsp;
+
+### 4.1 Supp
+
+&nbsp;
+
+**Assumptions:**
+ 
+ * To perform those t.tests, we have assumed that the groups were unpaired. Indeed, The subjects tested are the same for each value of dose, but not for each value of supp, the sample of size 30 for each supp being composed of 3 times the same 10 guinea pigs.
+ * Then, we have assumed that the 2 groups, each time, don't have the same variance. We don't have any evidence that the variance may be the same. That's why we have not specified in the t.test the value "var.equal = TRUE", and so this value is set to FALSE by default.
+ * In order to use the t interval, we have also assumed that the data are iid normal.
+
+&nbsp;
+
+**Conclusions:**
+
+We have a confidence interval from -7.57 to 0.17, so 0 is inside the confidence interval. 
+p-value = 0.06 
+What it means is that we don't have enough evidence to reject the null H0 hypothesis, the null hypothesis being that the means of the 2 groups are equal. And so we can't say that the difference in the means of the 2 groups is significant.
+
+&nbsp;
+
+### 4.2 Dose
+
+&nbsp;
+
+**Assumptions:**
+ 
+ * To perform those t.tests, we have assumed that the groups were paired. Indeed, The subjects tested are the same for each value of dose. As we have shown above, the t.test performed with unpaired values presents no significant differences in terms of confidence intervals.
+ * Then, we have assumed that the 2 groups, each time, don't have the same variance. We don't have any evidence that the variance may be the same. That's why we have not specified in the t.test the value "var.equal = TRUE", and so this value is set to FALSE by default.
+ * In order to use the t interval, we have also assumed that the data are iid normal.
+
+**Conclusions:**
+
+Here are the confidence intervals shown by the t.tests :
+
+ * groups 1 & 0.5 : from 6.39 to 11.87 (p-value = 1.225e-06)
+ * groups 2 & 1 : from 3.47 to 9.26 (p-value = 1.93e-04)
+ * groups 2 & 0.5 : from 12.62 to 18.37 (p-value = 7.19e-10)
+
+We see that for each t.test, 0 is not included in the confidence interval, and each p-value is very small. This means that we can reject the null hypothesis (H0) and so we can say that the difference in the means of the different groups is significant. 
+Furthermore, as we have got a positive interval each time, we can be confident that the mean of group dose = 1 may be superior to the mean of group dose = 0.5 and that the mean of group dose = 2 may be superior to the mean of the group dose = 1.

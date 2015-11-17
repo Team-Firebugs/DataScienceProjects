@@ -1,0 +1,167 @@
+---
+output: pdf_document
+---
+---
+title: "Regression models project"
+author: "RDSN"
+date: "21 October 2015"
+output: pdf_document
+geometry: margin=1cm
+---
+
+------
+
+\fontsize{10}{1}
+\selectfont
+
+## Executive summary
+
+In this report, we investigate the relationship between MPG (Miles per Gallon) and several variables within the dataset **mtcars**. 
+The data was extracted from the 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973–74 models). 
+We will first show that using a manual transmission rather than an automatic one seems to lead to a larger MPG.
+Though, when we try to find a clear relationship between MPG and the transmission, we cannot just stop there and we must investigate further, considering a lot of other features that are at stake.
+The conclusion is, wether in the case of the relationship between MPG and the am variable alone, or with 2 other variables, the cars with manual transmission in this study have on average significantly higher MPG than the cars with automatic transmission.
+
+Loading the **mtcars** data
+```{r, echo=TRUE}
+data(mtcars)
+```
+
+## 1. Is an automatic or manual transmission better for MPG
+
+First let's have a look at the data
+```{r, echo=TRUE, results = 'hide'}
+head(mtcars)
+```
+
+```{r, echo=TRUE, results = 'hide'}
+str(mtcars)
+```
+By looking at the structure of the data, we see that all variables are numerical.
+
+Now let's have a look at the relation between MPG and transmission.            
+
+   
+ > ^_**- See Appendix - Figure 1 for the plot and code -**_^
+ 
+As we see on this plot, we can suppose that manual transmission (am =1) is associated with a larger MPG.
+
+Let's fit a simple linear regression to check this assumption.
+```{r, echo=TRUE, results = 'hide'}
+fit1 <- lm(mpg ~ factor(am), data=mtcars)
+summary(fit1)
+```
+ > ^_**- See Appendix - Figure 2 for code results -**_^
+  
+The coefficients of this model mean :
+- if the transmission is automatic, am = 0, the prediction is 17.147, which is the mean of MPG for am == 0;
+- if the transmission is manual, am = 1, then the prediction is 17.147 + 7.245 = 24.392 which is the mean of MPG for am == 1;
+This is a quite simple model.
+
+Let's calculate a 95% confidence interval for Beta1.
+```{r, echo=TRUE}
+m <- coef(summary(fit1))[2,1]
+se <- coef(summary(fit1))[2,2]
+m + c(-1,1)*qt(.975,30)*se # (n = 32 so n-2 = 30)
+```
+The confidence interval does not include 0. p-Value for Beta1 is small (2e10-4 < 0.05). The confidence interval is positive. 
+So we can reject the null hypothesis and so assume that the means of the 2 groups are significantly different at alpha = 0.05, and furthermore that the mean of the sample with am = 1 is likely to be larger than the mean of the sample with am = 0.
+
+But, as we are aware of, MPG is not only a function of the type of transmission, but it depends on a lot of different features. We are going to investigate those features in the next question.
+
+\pagebreak
+
+## 2. Quantify the MPG difference between automatic and manual transmissions
+
+So, we have seen before that a manual transmission seems to lead to a larger MPG.
+So to model the relation between MPG and all of those features, we are going to create several models and compare them to each other.
+
+Let's see the correlation between the features to choose features to include into a model.
+```{r, echo=TRUE, results = 'hide'}
+cor(mtcars) # results not shown here
+```
+The variable the more correlated with MPG is `wt`.
+Then we are going to add the variable the less corelated with `wt` which is `qsec`. And then we add the variable of interest here which is `am`.
+
+Let's build those models.
+```{r, echo=TRUE, results = 'hide'}
+fit1 <- lm(mpg ~ wt, data=mtcars)
+fit2 <- lm(mpg ~ wt + qsec, data=mtcars)
+fit3 <- lm(mpg ~ wt + qsec + factor(am), data=mtcars)
+
+anova(fit1,fit2, fit3)
+```
+ > ^_**- See Appendix - Figure 3 for code results -**_^
+  
+As we can see with this comparison, the 2nd and the third models seem to be significant, with a p_value very small, which leads us to reject the null hypothesis, and so to suppose that these models lead to an improvement in comparison of the model 1.
+
+Let's go further with the 3rd model.
+```{r, echo=TRUE, results = 'hide'}
+summary(fit3)
+```
+ > ^_**- See Appendix - Figure 4 for code results -**_^ 
+  
+All the variables are significant in this model.
+This summary shows that if `wt` and `qsec` are maintened constant, then a car with a manual transmission add 2.94 more MPG on average than cars with automatic transmission.   
+
+Let's calculate a 95% confidence interval for Beta3.
+```{r, echo=TRUE}
+m <- coef(summary(fit3))[4,1]
+se <- coef(summary(fit3))[4,2]
+m + c(-1,1)*qt(.975,30)*se # (n = 32 so n-2 = 30)
+```
+The confidence interval does not include 0. p-Value for Beta1 is small (4e10-2 < 0.05). The confidence interval is positive. 
+So we can reject the null hypothesis and so assume that the means of the 2 groups are significantly different at alpha = 0.05, and furthermore that the mean of the sample with am = 1 is likely to be larger than the mean of the sample with am = 0.
+
+Let's plot the fit3 to see the residuals
+```{r, echo=TRUE, eval = FALSE, results = 'hide'}
+par(mfrow=c(2,2))
+plot(fit3)
+```
+ > ^_**- See Appendix - Figure 5 for the plot and code -**_^  
+  
+As we can see from those plots :
+
+ - The Residual vs Fitted and the Scale-Location plots show that there is a slight curve, indicating a slight pattern (to be investigated). And several points seem to be outliers, exercing an influence over the curve, for example Toyota Corolla (row 20)
+
+ - the normal Q-Q plot indicates that the residuals tend to follow a normal distribution, so that the points lie on the line, except for the outliers at the top-right.
+
+ - Finally, the Residuals vs Leverage points out those outliers, but indicates that those outliers are within the confidence interval (so not really outliers).
+
+\pagebreak
+
+\begin{center}APPENDIX\end{center}
+
+-------
+
+\underline{Figure 1}
+```{r, echo=TRUE}
+library(ggplot2)
+
+g <- ggplot(mtcars, aes(x = factor(am), y = mpg)) + geom_violin()
+g <- g + ggtitle("MPG vs Transmisison (am)")
+g
+```
+
+\underline{Figure 2}
+```{r, echo=FALSE}
+summary(fit1)
+```
+
+\underline{Figure 3}
+```{r, echo=FALSE}
+anova(fit1,fit2, fit3)
+```
+
+\underline{Figure 4}
+```{r, echo=FALSE}
+summary(fit3)
+```
+
+\underline{Figure 5}
+```{r, echo=TRUE, fig.align= 'center'}
+par(mfrow=c(2,2))
+plot(fit3)
+```
+
+

@@ -1,0 +1,233 @@
+---
+title: "WEATHER EVENTS IMPACT ON HEALTH AND ECONOMY"
+author: "RDSN"
+date: "19 October 2015"
+output: html_document
+---
+
+&nbsp;
+&nbsp;
+&nbsp;
+
+## 1. Synopsis
+
+&nbsp;
+
+In this report, we aim to find what type of severe weather events are most harmful
+with respect to population health, and what types of severe weather events have
+the greatest economic consequences, accorss the United States, from 1950 to 
+November 2011. To investigate these questions, we obtained and explore the U.S.
+National Oceanic and Atmospheric Administration's (NOAA) storm database, which 
+tracks characteristics of major storm and weather events in the United States, and has been collected from 1950 to November 2011. From these data, we found that the
+most harmful weather events in terms of population health are tornados,
+and that the weather events that had the greatest economic consequences are floods, hurricanes/typhoons, and tornados.
+
+&nbsp;
+
+## 2. Data processing
+
+&nbsp;
+
+From the NOAA website, we obtained and explore the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database, which tracks characteristics of major storm and weather events in the United States, and has been collected from year 1950 to November 2011.
+
+&nbsp;
+
+### 2.1 Reading the data
+
+&nbsp;
+
+The data come in the form of a comma-separated-value file compressed via the bzip2 algorithm to reduce its size. We first download the file with the appropriate 
+weblink 
+<https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2>
+and then read the csv file into R.
+We can read directly the csv.bz2 file with the `read.csv` function, without having
+to uncompress the file before. That's what we do here.
+
+```{r, echo =TRUE, cache = TRUE}
+data <- read.csv("repdata-data-StormData.csv.bz2", stringsAsFactors = FALSE)
+```
+
+Let's have a look at the dimensions of the dataset.
+```{r, echo = TRUE}
+dim(data) # 902297 * 37
+```
+So the data is composed of 902 297 rows and 37 variables.
+
+We can have a look at the general structure of the data to know what are those variables and what is their class.
+```{r, echo = TRUE}
+str(data)
+```
+
+We can also have a quick look at the first rows in this dataset.
+```{r, echo = TRUE}
+head(data)
+```
+
+First we can have a look at the missing values if there are any. We use for this purpose the function `summary` so that we can check the variables.
+```{r, echo = TRUE, cache = TRUE}
+summary(data)
+```
+
+Some variables have missing values.
+For the purpose of our study here, we are going to use the following variables:
+
+ * STATE
+ * EVTYPE
+ * FATALITIES
+ * INJURIES
+ * PROPDMG
+ * PROPDMGEXP
+ * CROPDMG
+ * CROPDMGEXP
+
+As those variables don't present any missing value in the dataset, we are not going to operate any transformation to deal with the missing values. But we are going to make a subset of the initial dataset containing only those variables.
+```{r, echo = TRUE}
+data_new <- data[,c("STATE", "EVTYPE", "FATALITIES", "INJURIES", "PROPDMG", "PROPDMGEXP", "CROPDMG", "CROPDMGEXP")]
+```
+
+We check the dimensions of this new dataset.
+```{r, echo = TRUE}
+dim(data_new) # 902297 * 8
+```
+
+&nbsp;
+
+### 2.2 Preprocessing for harmfulness
+
+&nbsp;
+
+The type of events is given by the variable `EVTYPE`.
+The harmfulness of the event is given by 2 variables : `FATALITIES` and `INJURIES`.
+
+Let's first sum Injuries and Fatalities variables.
+Then we aggregate this sum with types of event.
+```{r, echo = TRUE}
+
+data_new$harm <- data_new$INJURIES + data_new$FATALITIES
+
+harm <- aggregate(harm ~ EVTYPE, data= data_new, sum)
+harm <- harm[order(harm$harm, decreasing = TRUE),]
+
+```
+
+&nbsp;
+
+### 2.3 Preprocessing for economic consequences
+
+&nbsp;
+
+The economic consequences can be assessed with the variables `PROPDMG` and `CROPDMG`. These are numerical values. But these values must be multiplied by the following variables `PROPDMGEXP`and `CROPDMGEXP`respectively.
+Let's have a look at those variables.
+```{r, echo = TRUE}
+unique(data_new$PROPDMGEXP)
+```
+```{r, echo = TRUE}
+unique(data_new$CROPDMGEXP)
+```
+
+Thse characters are used to signify the magnitude of the number, i.e., 1.55B for $1,550,000,000 : “K” for thousands, “M” for millions, and “B” for billions.
+But we can observe that these variables are like "mixed", as there is for example an "m" character and an "M" character, which mean the same thing. We first have to transform those characters so that to clean them up.
+```{r, echo = TRUE}
+data_new$PROPDMGEXP <- toupper(data_new$PROPDMGEXP)
+unique(data_new$PROPDMGEXP)
+```
+```{r, echo = TRUE}
+data_new$CROPDMGEXP <- toupper(data_new$CROPDMGEXP)
+unique(data_new$CROPDMGEXP)
+```
+
+We know from the documentation the meaning of the letters in `PROPDMGEXP` and `CROPDMGEXP`, but we don't have any information regarding the numbers in those variables, supposingly representing an old format of conversion maybe not used anymore. We can see by using the function `table` that those numbers are really less represented in the set than the letters.
+```{r, echo = TRUE}
+table(data_new$PROPDMGEXP)
+```
+```{r, echo = TRUE}
+table(data_new$CROPDMGEXP)
+```
+So we're not going to take those numbers into account, and we only consider the letters, as we are sure of their meaning.
+
+First, we create a function to convert all the values, and then we create a new variable to store the converted values.
+```{r, echo = TRUE}
+conv <- function(dmg, dmgexp){
+    dmg * switch(dmgexp, H = 100, K = 1000, M = 10^6, B = 10^9, 1)
+}
+
+data_new$cProp <- mapply(conv, data_new$PROPDMG, data_new$PROPDMGEXP)
+data_new$cCROP <- mapply(conv, data_new$CROPDMG, data_new$CROPDMGEXP)
+
+```
+
+Now we are going to aggregate the dataset to prepare the plotting.
+And first, we cumulate the PROP and CROP damages.
+```{r, echo = TRUE}
+data_new$cost <- data_new$cProp + data_new$cCROP
+
+eco <- aggregate(cost ~ EVTYPE, data= data_new, sum)
+eco <- eco[order(eco$cost, decreasing = TRUE),]
+```
+
+&nbsp;
+
+## 3. Results
+
+&nbsp;
+
+### 3.1 Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+&nbsp;
+
+```{r, echo = TRUE}
+library(ggplot2)
+
+harm15 <- harm[1:15,]
+
+g <- ggplot(data = harm15, aes(EVTYPE, harm, fill = harm))
+g <- g + geom_bar(stat = "identity")
+g <- g + xlab("Top 15 events")
+g <- g + ylab("harmful measurement (Fatalities + Injuries)")
+g <- g + ggtitle("15 most harmful events \n from 1950 to November 2011")
+g <- g + coord_flip()
+g
+
+```
+
+&nbsp;
+&nbsp;
+As we can see from the plot above, tornados have the greatest impact on health.
+We can also observe that some other categories have a significant impact on health, such as thunderstorm winds, lightnings, floods, and excessive heats.
+
+&nbsp;
+
+### 3.2 Across the United States, which types of events have the greatest economic consequences?
+
+&nbsp;
+
+```{r, echo = TRUE}
+eco15 <- eco[1:15,]
+
+g <- ggplot(data = eco15, aes(EVTYPE, cost, fill = cost))
+g <- g + geom_bar(stat = "identity")
+g <- g + xlab("Top 15 events")
+g <- g + ylab("economic consequence measurement in $\n (Property damages + Crop damages)")
+g <- g + ggtitle("15 events with greatest economic consequences \n from 1950 to November 2011")
+g <- g + coord_flip()
+g
+```
+
+&nbsp;
+&nbsp;
+As we can see from above, the most costly category of weather events is floods.
+We can see that hurricanes/typhoons, storm surges and tornados are also very costly.
+
+&nbsp;
+
+## 4. Environment used
+
+&nbsp;
+
+This project has been conducted with the following tools and systems :
+
+ * MacBook Pro (13-inch, Mid 2012)
+ * Processor 2,5 GHz Intel Core i5
+ * Memory 4 GB 1600 MHz DDR3
+ * OS X El Capitan
+ * R Studio Version 0.99.483 – © 2009-2015 RStudio, Inc.

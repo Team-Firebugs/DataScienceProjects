@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<title>HOW TO MAKE IT WORK</title>
+
+<script type="text/javascript">
+window.onload = function() {
+  var imgs = document.getElementsByTagName('img'), i, img;
+  for (i = 0; i < imgs.length; i++) {
+    img = imgs[i];
+    // center an image if it is the only element of its parent
+    if (img.parentElement.childElementCount === 1)
+      img.parentElement.style.textAlign = 'center';
+  }
+};
+</script>
+
+
+
+
+
+<style type="text/css">
+body, td {
+   font-family: sans-serif;
+   background-color: white;
+   font-size: 13px;
+}
+
+body {
+  max-width: 800px;
+  margin: auto;
+  padding: 1em;
+  line-height: 20px;
+}
+
+tt, code, pre {
+   font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace;
+}
+
+h1 {
+   font-size:2.2em;
+}
+
+h2 {
+   font-size:1.8em;
+}
+
+h3 {
+   font-size:1.4em;
+}
+
+h4 {
+   font-size:1.0em;
+}
+
+h5 {
+   font-size:0.9em;
+}
+
+h6 {
+   font-size:0.8em;
+}
+
+a:visited {
+   color: rgb(50%, 0%, 50%);
+}
+
+pre, img {
+  max-width: 100%;
+}
+pre {
+  overflow-x: auto;
+}
+pre code {
+   display: block; padding: 0.5em;
+}
+
+code {
+  font-size: 92%;
+  border: 1px solid #ccc;
+}
+
+code[class] {
+  background-color: #F8F8F8;
+}
+
+table, td, th {
+  border: none;
+}
+
+blockquote {
+   color:#666666;
+   margin:0;
+   padding-left: 1em;
+   border-left: 0.5em #EEE solid;
+}
+
+hr {
+   height: 0px;
+   border-bottom: none;
+   border-top-width: thin;
+   border-top-style: dotted;
+   border-top-color: #999999;
+}
+
+@media print {
+   * {
+      background: transparent !important;
+      color: black !important;
+      filter:none !important;
+      -ms-filter: none !important;
+   }
+
+   body {
+      font-size:12pt;
+      max-width:100%;
+   }
+
+   a, a:visited {
+      text-decoration: underline;
+   }
+
+   hr {
+      visibility: hidden;
+      page-break-before: always;
+   }
+
+   pre, blockquote {
+      padding-right: 1em;
+      page-break-inside: avoid;
+   }
+
+   tr, img {
+      page-break-inside: avoid;
+   }
+
+   img {
+      max-width: 100% !important;
+   }
+
+   @page :left {
+      margin: 15mm 20mm 15mm 10mm;
+   }
+
+   @page :right {
+      margin: 15mm 10mm 15mm 20mm;
+   }
+
+   p, h2, h3 {
+      orphans: 3; widows: 3;
+   }
+
+   h2, h3 {
+      page-break-after: avoid;
+   }
+}
+</style>
+
+
+
+</head>
+
+<body>
+<p>&nbsp;
+&nbsp;
+&nbsp;</p>
+
+<h2>HOW TO MAKE IT WORK</h2>
+
+<p>Through the code written in the R file, here the work performed :</p>
+
+<ol>
+<li>First, unzip the data from  <a href="https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip">https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip</a> 
+in your working directory. A folder called &ldquo;UCI HAR Dataset&rdquo; will be created in your working directory. Make sure the folder &ldquo;UCI HAR Dataset&rdquo; and the run_analysis.R script are both in the current working directory.</li>
+<li>Second, use source(&ldquo;run_analysis.R&rdquo;) command in RStudio.</li>
+<li>Third, you will find one output file is generated in the current working directory:
+
+<ul>
+<li>tidyDataSet.txt (225 KB): it contains a data frame with 180 rows and 68 columns.</li>
+</ul></li>
+<li>Finally, use 
+data &lt;- read.table(&ldquo;tidyDataSet.txt&rdquo;, header = TRUE, stringsAsFactors = FALSE) 
+command in RStudio to read the file. Since we are required to get the average of each variable for each activity and each subject, and there are 6 activities in total and 30 subjects in total, we have 180 rows with all combinations for each of the 66 features. Note that there are 68 columns, the 2 first corresponding to the activity label and the ID of the subject (66 + 2 = 68 columns).</li>
+</ol>
+
+<p>Note :
+once you have sourced &ldquo;run_analysis.R&rdquo; into RStudio, you have direct access to 2 dataframes, without having to read any other file :</p>
+
+<ul>
+<li>a dataframe called &ldquo;mat&rdquo; whcich contains the dataframe available in the tidyDataSet.txt file</li>
+<li>a global dataframe called &ldquo;mergeDataFinal&rdquo; that contains all the variables (68) without any average calculated for each activity and each subject. This dataset is a 10299 * 68 dataset.</li>
+</ul>
+
+<p>&nbsp;</p>
+
+<h2>HOW DOES THE &ldquo;run_analysis.R&rdquo; FILE WORKS</h2>
+
+<h3>Step1 - Merger of the training and the test sets to create one data set.</h3>
+
+<ul>
+<li><p>First we read the different txt files and we get sure that the dimensions corresponds to what we expect:</p>
+
+<ul>
+<li>X_train.txt : dim = 7352 * 561</li>
+<li>subject_train.txt : dim = 7352 * 1</li>
+<li>y_train.txt : dim = 7352 * 1</li>
+<li>X_test.txt : dim = 2947 * 561</li>
+<li>subject_test.txt : dim = 2947 * 1</li>
+<li>y_test.tx : dim = 2947 * 1</li>
+</ul></li>
+<li><p>Then We merge the training and the test datasets
+(We have now merged the training and the test. We still have to complete the dataset by adding the Subject column and the Label column. We&#39;ll do this after the step 2 so that it&#39;s easier to remove all the non-mean and non-standard measuring columns.)</p></li>
+</ul>
+
+<h3>Step2 - Extraction of only the measurements on the mean and standard deviation for each measurement.</h3>
+
+<ul>
+<li>We first read the file containing the features names</li>
+<li>Then we get the indices for all the features with mean and std measurements</li>
+<li>We make the new dataset by selecting only the features we&#39;re interested in and that we have selected just before</li>
+<li>Then we add the Label and the Subject columns to the dataset. But before, we are going to put features names on top of the columns of the set.</li>
+</ul>
+
+<h3>Step 3 - Use of descriptive activity names to name the activities in the data set</h3>
+
+<ul>
+<li>We first read the activity labels dataset</li>
+<li>Then we substitute the &ldquo;-&rdquo; by &ldquo;&rdquo; in the labels</li>
+<li><p>Finally, for the 2 labels which are composed of 2 words, we change the first letter of the second word by an uppercase</p></li>
+<li><p>We then add the activity column by merging</p></li>
+<li><p>And we add the activity column to the dataset by merging</p></li>
+<li><p>We delete the first column of the dataset which contains the number associated with the activity, which we don&#39;t need because we&#39;ve add the activity name.</p></li>
+</ul>
+
+<h3>Step 4 - Appropriate labeling of the data set with descriptive variable names.</h3>
+
+<p>For each name in the features list :</p>
+
+<ul>
+<li>We delete parentheses</li>
+<li>Wer replace &ldquo;mean&rdquo; by &ldquo;Mean&rdquo;</li>
+<li>We replace &ldquo;std&rdquo; by &ldquo;Std&rdquo;</li>
+<li>We delete the &ldquo;-&rdquo;</li>
+<li>We then reorder the data columns</li>
+</ul>
+
+<p>The dataset created is named <strong>mergeDataFinal</strong></p>
+
+<h3>Step 5 - From the data set in step 4, creation of a second, independent tidy data set with the average of each variable for each activity and each subject.</h3>
+
+<ul>
+<li>Here, we create a matrix to present the data.
+As we compute the average for each activity and each subject, the matrix must
+have 180 rows = 6 * 30 (6 activities and 30 subjects). The number of columns is equal to the number of features. 
+This matrix is named <strong>mat</strong></li>
+<li>Finally, we write this &ldquo;mat&rdquo; dataframe into the &ldquo;tidyDataSet.txt&rdquo; file which is created in our working directory.</li>
+</ul>
+
+<p>&nbsp;</p>
+
+<h2>FILES AVAILABE IN THIS REPO</h2>
+
+<ul>
+<li><strong>Readme.md</strong> : This file explain the whole context and how the different files work and are linked together.</li>
+<li><strong>CodeBook.md</strong> : This file describes the variables, the data, and the process performed in the R file so that to clean the data up.</li>
+<li><strong>run_analysis.R</strong> : this file contains the code written in R for performing the cleaning up of the data</li>
+<li><strong>tidyDataSet.txt</strong> : this file contains an independent tidy data set with the average of each variable for each activity and each subject. This data set has been performed through the 5th step coded at the end of the run_analysis.R file.</li>
+</ul>
+
+</body>
+
+</html>

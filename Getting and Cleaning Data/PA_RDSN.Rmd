@@ -1,0 +1,109 @@
+---
+title: "GCD - Program Assignment"
+author: "RDSN"
+date: "15 October 2015"
+output: html_document
+---
+
+```{r}
+
+# Step1
+
+X_train <- read.table("./UCI HAR Dataset/train/X_train.txt")
+dim(X_train) # 7352 * 561
+subject_train <- read.table("./UCI HAR Dataset/train/subject_train.txt")
+dim(subject_train) # 7352 * 1
+y_train <- read.table("./UCI HAR Dataset/train/y_train.txt")
+dim(y_train) # 7352 * 1
+
+X_test <- read.table("./UCI HAR Dataset/test/X_test.txt")
+dim(X_test) # 2947 * 561
+subject_test <- read.table("./UCI HAR Dataset/test/subject_test.txt")
+dim(subject_test) # 2947 * 1
+y_test <- read.table("./UCI HAR Dataset/test/y_test.txt")
+dim(y_test) # 2947 * 1
+
+mergeData <- rbind(X_train, X_test)
+dim(mergeData) # 10299 * 561
+mergeLabel <- rbind(y_train, y_test)
+dim(mergeLabel) # 10299 * 1
+names(mergeLabel) <- "activity_label" # naming the title of the column
+mergeSubject <- rbind(subject_train, subject_test)
+dim(mergeSubject) # 10299 * 1
+names(mergeSubject) <- "Subject" # naming the title of the column
+
+# We have now merged the training and the test. We still have to complete the dataset by adding the Subject column and the Label column. We'll do this after the step 2 so that it's easier to remove all the non-mean and non-standard measuring columns.
+
+# Step2
+
+features_name <- read.table("./UCI HAR Dataset/features.txt", sep = " ", col.names = c("ID_features", "Desc_feature"))
+dim(features_name) # 561 * 2
+# [Mm]ean\\(.*\\) means we are extracting the word "mean" or "Mean" with parentheses after. That means that we don't want features where the word "mean" is inside the parentheses.
+# [Ss]td\\(.*\\) the same as above but whith the word "std" or "Std" this time.
+# | means we are asking for either the first condition OR the other one.
+indices <- grep("[Mm]ean\\(.*\\)|[Ss]td\\(.*\\)", features_name$Desc_feature)
+length(indices) # 66
+
+mergeData_new <- mergeData[, indices]
+dim(mergeData_new) # 10299 * 66
+features_name_new <- features_name[indices,]
+dim(features_name_new) # 66 * 2
+
+# now, let's add the Label and the Subject columns to the dataset. But before, we are going to put features names on top of the columns of the set.
+
+names(mergeData_new) <- features_name_new[,2]
+
+mergeData_new$subject <- mergeSubject[,1]
+mergeData_new$activity_label <- mergeLabel[,1]
+
+# Step 3
+
+activity_label <- read.table("./UCI HAR Dataset/activity_labels.txt", sep = " ", col.names = c("ID_activity", "activity"))
+activity_label[,2] <- tolower(gsub("_","",activity_label[,2]))
+substr(activity_label$activity[2], 8, 8) <- toupper(substr(activity_label$activity[2], 8, 8))
+substr(activity_label$activity[3], 8, 8) <- toupper(substr(activity_label$activity[3], 8, 8))
+
+mergeDataFinal <- merge(mergeData_new,activity_label, by.x = "activity_label", by.y = "ID_activity", all = TRUE)
+
+# deleting the first column of the dataset which contains the number associated with the activity, which we don't need because we've add the activity name.
+mergeDataFinal <- mergeDataFinal[,2:ncol(mergeDataFinal)]
+
+# Step 4
+
+names(mergeDataFinal) <- gsub("\\(\\)","",names(mergeDataFinal)) # delete parentheses
+names(mergeDataFinal) <- gsub("mean","Mean",names(mergeDataFinal)) # replacing mean by Mean
+names(mergeDataFinal) <- gsub("std","Std",names(mergeDataFinal)) # replacing std by Std
+names(mergeDataFinal) <- gsub("-","",names(mergeDataFinal)) # deleting -
+
+mergeDataFinal <- mergeDataFinal[,c(67,68,1:66)] # reordering of the data columns
+
+# Step 5
+
+avData <- mergeDataFinal
+lenSubject <-length(unique(mergeSubject[,1])) # 30
+lenActivity <- nrow(activity_label) # 6
+lenFeatures <- ncol(avData) # 68
+mat <- matrix(0, nrow=lenSubject*lenActivity, ncol = lenFeatures)
+dim(mat) # 180 * 68
+mat <- as.data.frame(mat)
+colnames(mat) <- colnames(avData)
+count <- 1
+for (i in 1:lenSubject){
+    for (j in 1:lenActivity) {
+        dt <- avData[avData$subject == i & avData$activity == activity_label[j,2],]
+        m <- sapply(dt[,3:lenFeatures], mean)
+        mat[count,1] <- i
+        mat[count,2] <- activity_label[j,2]
+        mat[count, 3:lenFeatures] <- m
+        count <- count + 1
+    }
+}
+
+a <- aggregate(.~ activity + subject, data = avData, mean)
+a <-a[order(a$subject,a$activity),]
+mat <- mat[order(mat$subject, mat$ac)]
+
+write.table(mat, file = "tidyDataSet.txt", row.name = FALSE)
+
+
+```
