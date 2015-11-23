@@ -1,0 +1,1736 @@
+---
+title: "KAGGLE - TITANIC"
+author: "RDSN"
+date: "30 October 2015"
+output: html_document
+---
+
+# Overview
+
+The sinking of the RMS Titanic is one of the most infamous shipwrecks in history.  On April 15, 1912, during her maiden voyage, the Titanic sank after colliding with an iceberg, killing 1502 out of 2224 passengers and crew. This sensational tragedy shocked the international community and led to better safety regulations for ships.
+
+One of the reasons that the shipwreck led to such loss of life was that there were not enough lifeboats for the passengers and crew. Although there was some element of luck involved in surviving the sinking, some groups of people were more likely to survive than others, such as women, children, and the upper-class.
+
+In this challenge, we ask you to complete the analysis of what sorts of people were likely to survive. In particular, we ask you to apply the tools of machine learning to predict which passengers survived the tragedy.
+
+# Data
+
+File Name        | Available Formats
+-----------------|------------------
+train            | .csv (59.76 kb)
+gendermodel      | .csv (3.18 kb)
+genderclassmodel | .csv (3.18 kb)
+test             | .csv (27.96 kb)
+
+# Variables description
+
+Name            | Description
+----------------|-------------
+survival        | Survival (0 = No; 1 = Yes)
+pclass          | Passenger Class (1 = 1st; 2 = 2nd; 3 = 3rd)
+name            | Name
+sex             | Sex
+age             | Age
+sibsp           | Number of Siblings/Spouses Aboard
+parch           | Number of Parents/Children Aboard
+ticket          | Ticket Number
+fare            | Passenger Fare
+cabin           | Cabin
+embarked        | Port of Embarkation (C = Cherbourg; Q = Queenstown; S = Southampton)
+
+*Special notes:*
+
+*- Pclass is a proxy for socio-economic status (SES)*  
+*1st ~ Upper; 2nd ~ Middle; 3rd ~ Lower*
+
+*- Age is in Years; Fractional if Age less than One (1)*  
+*If the Age is Estimated, it is in the form xx.5*
+
+*With respect to the family relation variables (i.e. sibsp and parch) some relations were ignored.  The following are the definitions used for sibsp and parch.*
+
+*- Sibling:  Brother, Sister, Stepbrother, or Stepsister of Passenger Aboard Titanic*
+
+*- Spouse:   Husband or Wife of Passenger Aboard Titanic (Mistresses and Fiances Ignored)*
+
+*- Parent:   Mother or Father of Passenger Aboard Titanic*
+
+*- Child:    Son, Daughter, Stepson, or Stepdaughter of Passenger Aboard Titanic*
+
+*Other family relatives excluded from this study include cousins, nephews/nieces, aunts/uncles, and in-laws.  Some children travelled only with a nanny, therefore parch=0 for them.  As well, some travelled with very close friends or neighbors in a village, however, the definitions do not support such relations.*
+
+# Loading the files
+
+```{r}
+train = read.csv('train.csv');
+test = read.csv('test.csv');
+```
+
+# Exploratory Analysis
+
+First, let's have a look at the data from the train set.
+```{r}
+head(train)
+dim(train) # 891 * 12
+names(train)
+str(train)
+```
+
+We can observe that the train set is composed of 891 observations with 12 features. We can first see through the `str` call that some features need to be transformed into factors, such as `Survived` or `Pclass` for example, for which we already kno that they are representatives of levels.  
+In the next part of the study, we are going to take a look at each feature included in this data set, so that to enhance some interesting characteristics, and so come up with a final training set cleaned up and up to be fitted with a model.  
+To perform such an exploratory analysis, we create a copy of the train set so that we can make modifications without changing the original data.frame. At the end, we will see which modification is worth keeping in the analysis and so apply it to the train set destined to be fitted with a regression model.  
+Let's create this copy.
+```{r}
+train.t <- train
+```
+
+## Features - PassengerId
+
+```{r}
+str(train.t$PassengerId)
+```
+This feature is only representative of the identification of each passenger. It's just a count.  
+It's not going to be useful in the regression model because it brings no information about the survival of each individual.
+
+## Features - Survived
+
+```{r}
+str(train$Survived)
+```
+This is the feature we want to predict for the test set, the **outcome**.  
+As we see here, it's a numeric variable which takes values 0 or 1 only.  
+**0** means **death**  
+**1** means **survival**
+So this is a binary outcome.  
+Whatever will be the model fitted to this set, it's going to be better to transform this variable into a factor variable, for example to perform a logistic regression, or even a decision tree or a random forest.  
+So we transform it into a factor variable.
+```{r}
+train.t$Survived <- factor(train.t$Survived)
+```
+Now we have this factor variable, let's have a look at the number of persons who survived in the training set and the one who died.
+```{r, echo = FALSE, fig.align='center', fig.height= 3, fig.width= 3.5}
+library(ggplot2)
+
+g <- ggplot(data = train.t, aes(x= Survived)) + geom_bar(fill = "darkblue")
+g <- g + ggtitle("Counts of survivals and deads \n in the train set")
+g
+
+```
+
+```{r, echo = FALSE, results='hide'}
+surv <- sum(as.numeric(as.character(train.t$Survived)))
+dead <- nrow(train.t)-surv
+propSurv <- round(surv/nrow(train.t),4)
+propDead <- round(dead/nrow(train.t),4)
+```
+
+So we can see here that the train set presents `r surv` persons who survived against `r dead` persons who died, `r propSurv*100`% of survival against `r propDead*100`% of death.
+
+```{r}
+table(train$Survived)
+```
+
+## Features - Pclass
+
+```{r}
+str(train.t$Pclass)
+```
+`Pclass` is a numeric variable whoch represents the class to which each passenger is attributed. This variable has 3 levels :
+
+ - 1 : Upper class
+ - 2 : Middle class
+ - 3 : Lower class
+
+Let's first transform this feature as a factor variable.
+```{r}
+train.t$Pclass <- factor(train.t$Pclass)
+```
+This feature is certainly strongly correlated with the probabilty of survival.
+Let's plot this relationship.
+```{r, echo = FALSE, fig.align='center', fig.height= 3.5, fig.width= 9, message = FALSE}
+require(gridExtra)
+
+g <- ggplot(data = train.t, aes(Survived, fill = Pclass)) + geom_bar(position = "dodge")
+g <- g + ggtitle("Counts of classes among survivals and deads \n in the train set")
+
+h <- ggplot(data = train.t, aes(Pclass, fill = Survived)) + geom_bar(position = "dodge")
+h <- h + ggtitle("Counts of survivals and deads among classes \n in the train set")
+
+grid.arrange(g,h,ncol=2)
+```
+
+```{r}
+table(train.t$Pclass, train.t$Survived)
+```
+
+```{r, echo = FALSE, results = "hide"}
+sub1 <- subset(train.t, train.t$Pclass == "3")
+deadClass3 <- sum(sub1$Survived=="0")
+propDeadClass3 <- round(deadClass3/nrow(sub1),4)
+
+sub2 <- subset(train.t, train.t$Survived == "0")
+class3Dead <- sum(sub2$Pclass == "3")
+propClass3Dead <- round(class3Dead/nrow(sub2),4)
+```
+So here, we can see that :
+
+ - In class 3, `r propDeadClass3 * 100`% of passengers died ( `r deadClass3` passengers over `r nrow(sub1)` ).
+ - Among dead people, `r propClass3Dead * 100`% of passengers come from class 3
+
+So the `Pclass` variable is strongly related to the chances of survival, especially saying that people coming from the third class have a large probabilty of dying.
+
+But we can see that comming from the second or the first class doesn't make any real difference in the chances of survival. We can keep that in mind so that if the model we are going to fit farther in that study may overfit, we could for example reduce the levels of the `Pclass` variable to 2, by just considering the third class and the others.  
+For the moment, we are keepping it the way it originally is.
+
+## Features - Name
+
+```{r}
+str(train.t$Name)
+```
+This `Name` variable is a factor variable with 891 levels. As, the number of rows in this train set is 891, we can say that no one has the same complete name.  
+Let's look at how a name is written.
+```{r}
+train.t$Name[1]
+```
+So we've got first the surname, a coma, the title, and then the first and second name.
+What we could do here is separate those three parts, the surname, the title, and the first and second name, so that to create a new feature `Title` and another new feature `Surname`.  
+Let's do it.
+```{r}
+train.t$Name <- as.character(train.t$Name)
+
+train.t$Title <- sapply(train.t$Name, FUN=function(x){strsplit(x, split='[,.]')[[1]][[2]]})
+train.t$Title <- sub(' ','',train.t$Title)
+
+train.t$Surname <- sapply(train.t$Name, FUN=function(x){strsplit(x, split='[,.]')[[1]][[1]]})
+```
+So, now, we have added 2 new features to the train set, which are :
+
+ - `Surname` : which represents the surname of each passenger
+ - `Title` : which represents the title of each passenger
+
+Those features are character variables.
+
+We can have a look at how many unique surnames and title are there in this set.
+```{r}
+length(unique(train.t$Title))
+length(unique(train.t$Surname))
+```
+So we have got 17 different titles and 667 different names.  
+That means that we have got several passengers that have got the same title and the same name.  
+The differents titles are :
+```{r}
+unique(train.t$Title)
+```
+Let's have a look at the chances of survival depending on the title.
+```{r, echo = FALSE, fig.align='center', fig.height= 6, fig.width= 10, message = FALSE}
+require(gridExtra)
+
+g <- ggplot(data = train.t, aes(Survived, fill = Title)) + geom_bar(position = "dodge")
+g <- g + ggtitle("Counts of titles among survivals and deads \n in the train set")
+
+h <- ggplot(data = train.t, aes(Title, fill = Survived)) + geom_bar(position = "dodge")
+h <- h + ggtitle("Counts of survivals and deads among titles \n in the train set")
+h <- h + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+grid.arrange(g,h,ncol=2)
+```
+
+```{r}
+table(train.t$Title, train.t$Survived)
+```
+Here we see that `Mr` are more likely to die, and that `Miss` and `Mrs` are more likely to survive. We also see that the most represented categories are `Mr`, `Master`, `Miss`, `Mrs`. We also observe that the category `Rev`, regrouping reverends, is composed only of dead passengers.  
+`Master` seems to represents the unmarried men.  
+`Mrs` and `Mme` are for married women.  
+The other categories are completely not significant in terms of number of passenger in comparison.  
+Here, what we can do is grouping categories together.
+```{r}
+train.t$tit <- "Other"
+train.t$tit[train.t$Title %in% c("Capt","Col","Don", "Dr","Jonkheer", "Major")] <- "Special"
+train.t$tit[train.t$Title %in% c("Lady", "Mme", "Mrs", "Ms", "the Countess")] <- "Mrs"
+train.t$tit[train.t$Title %in% c("Master")] <- "Master"
+train.t$tit[train.t$Title %in% c("Miss", "Mlle")] <- "Miss"
+train.t$tit[train.t$Title %in% c("Mr", "Sir")] <- "Mr"
+train.t$tit[train.t$Title %in% c("Rev")] <- "Rev"
+
+table(train.t$tit, train.t$Survived)
+```
+
+```{r, echo = FALSE, fig.align='center', fig.height= 6, fig.width= 10, message = FALSE}
+require(gridExtra)
+
+g <- ggplot(data = train.t, aes(Survived, fill = tit)) + geom_bar(position = "dodge")
+g <- g + ggtitle("Counts of new titles among survivals and deads \n in the train set")
+
+h <- ggplot(data = train.t, aes(tit, fill = Survived)) + geom_bar(position = "dodge")
+h <- h + ggtitle("Counts of survivals and deads among new titles \n in the train set")
+h <- h + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+grid.arrange(g,h,ncol=2)
+```
+As we have created another more convenient variable, `tit`, the `Title` variable is no longer useful for us.  
+
+Now that we have taken care of the titles, let's look at the surnames.
+As we have seen above, we have got 667 different names, over 891 passengers, which means that we have got relatives, being wives and husband, or children, or brothers and sisters.  
+We know that there are 2 variables in this dataset that are about parental relationship, `SibSp` and `Parch`. So as the surname can only tells us if relationship has an incidence on survival, we will deal with this when we look at the 2 features quoted above.
+
+## Features - Sex
+
+```{r}
+str(train.t$Sex)
+```
+This is a factor variable, which takes "male" or "female" value.
+Let's have a look at the distribution of survival depending on this feature.
+```{r, echo = FALSE, fig.align='center', fig.height= 3.5, fig.width= 9, message = FALSE}
+require(gridExtra)
+
+g <- ggplot(data = train.t, aes(Survived, fill = Sex)) + geom_bar(position = "dodge")
+g <- g + ggtitle("Counts of gender among survivals \n and deads in the train set")
+
+h <- ggplot(data = train.t, aes(Sex, fill = Survived)) + geom_bar(position = "dodge")
+h <- h + ggtitle("Counts of survivals and deads \n among gender in the train set")
+h <- h + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+grid.arrange(g,h,ncol=2)
+```
+
+So this plot tells us that a man is more likely to die than a woman.  
+But the question that we may be wondering is : is this information already available with the `tit` variable which is about the passengers'title?  
+
+Let's check that all the "female" are in the "Mrs" or "Miss" category.
+```{r}
+femsub <- subset(train.t,train.t$Sex == "female" & (train.t$tit != "Miss" & train.t$tit != "Mrs"))
+head(femsub)
+```
+So we see that there is only one woman that is not in one of those 2 categories because she is a doctor, and so she has been classified in the "Special" category.  
+So we won't take this variable into account as it's redundant with the `tit` variable.
+
+## Features - Age
+
+```{r}
+str(train.t$Age)
+summary(train.t$Age)
+propNA <- round(sum(is.na(train.t$Age))/nrow(train.t),4)
+```
+Here we see that we have got `r propNA*100`% of NA values in the `Age` feature.  
+We suppose that this feature is significant in predicting the survival probabilty. We may think of several options :
+
+ - We can take all the NA values (whole rows) out of the dataset and fit a model on the left rows. But, looking at the test set, we see that there are also NA values in the test set. So if we decide to erase those rows, it's because we don't think of using this feature as a predictor in our model...
+ - We can also calculate an "average" value to replace the NA values and so use this variable as a predictor in our model. But we will introduce this way an error in our model as the values we will replace the NAs with won't be accurate.
+ - We can try to find a relationship with other values, and maybe categorized this feature this way so that the error introduced in the model is less significant (or even completely inexistant).  
+ 
+Let's try to find a relationship between `Age` and other variables in this dataset.
+```{r, echo = FALSE, fig.align='center', fig.height= 3.5, fig.width= 9, message = FALSE}
+
+g <- ggplot(data = train.t, aes(Age, fill = Survived)) + geom_bar(position = "dodge")
+g <- g + ggtitle("Counts of Age among survivals \n and deads in the train set")
+g
+
+```
+
+```{r}
+length(unique(train.t$Age))
+range(train.t$Age, na.rm = TRUE)
+```
+Let's try to make some categories depending on a range of Age, and look at the proportion of survivals in each category.
+```{r}
+cat <- seq(0,80, by = 5)
+train.t$AgeC <- cut(train.t$Age, cat)
+
+a <- table(train.t$AgeC[!is.na(train.t$AgeC)], train.t$Survived[!is.na(train.t$AgeC)])
+a <- data.frame("0" = a[,1], "1" = a[,2])
+for (i in 1:(length(cat)-1)){
+    a$prop[i] <- round(as.double(a[i,2]/(a[i,1]+a[i,2])),4)
+}
+a
+```
+
+Let's plot this.
+```{r, echo = FALSE, fig.align='center', fig.height= 3.5, fig.width= 9, message = FALSE}
+
+g <- ggplot(data = train.t, aes(AgeC, fill = Survived)) + geom_bar(position = "dodge")
+g <- g + ggtitle("Counts of Age among survivals \n and deads in the train set")
+g
+
+```
+For now, we cannot yet see any relationship between `AgeC` variable and any other category.  
+We are going to clean up the other catagories and then come back to this to find a relationship.
+
+## Features - SibSp & Parch
+
+```{r}
+str(train.t$SibSp)
+str(train.t$Parch)
+```
+`SibSp` tells us that the passenger has a brother, sister, husband or wife aboard the Titanic.  
+`Parch` tells us that the passenger has a mother, father, son or daughter aboard the Titanic.  
+
+What we can do here is first creating a new variable attributing the size of the family aboard the Titanic, by summing `SibSp`, `Parch`, and 1 for the passenger.
+```{r}
+train.t$famsize <- train.t$SibSp + train.t$Parch + 1
+```
+We can suppose that there is a relationship between being accompanied aboard and the chances of survival.  
+Let's have a look at this.
+```{r, echo = FALSE, fig.align='center', fig.height= 5, fig.width= 10, message = FALSE}
+require(gridExtra)
+
+g <- ggplot(data = train.t, aes(factor(famsize), fill = Survived)) + geom_bar(position = "dodge")
+g <- g + ggtitle("Counts of survivals and deads \n among family size in the train set")
+
+h <- ggplot(data = train.t, aes(Survived, fill = factor(famsize))) + geom_bar(position = "dodge")
+h <- h + ggtitle("Counts of family size among survivals \n and deads in the train set")
+
+grid.arrange(g,h,ncol=2)
+```
+
+```{r}
+b <- table(train.t$famsize, train.t$Survived)
+b <- data.frame("0" = b[,1],"1" =  b[,2])
+b$prop <- round(b$X1/(b$X1+b$X0),4)
+b
+```
+We can get some trends here :
+
+ - passengers alone(famsize = 1) are more likely to die
+ - passengers with a family size of 2 to 4 are more likely to survive
+ - passengers with a family size of 5 or more are more likely to die
+
+We can so subset family size into 3 categories :
+
+ - family size = 1
+ - family size = 2 to 4
+ - family size = 5 or more
+
+Let's try this subsetting.
+```{r}
+train.t$fsize[train.t$famsize == 1] <- "[1]"
+train.t$fsize[train.t$famsize >1 & train.t$famsize<5] <- "[2 - 4]"
+train.t$fsize[train.t$famsize >4] <- "[5+]"
+train.t$fsize <- factor(train.t$fsize)
+```
+
+```{r, echo = FALSE, fig.align='center', fig.height= 5, fig.width= 10, message = FALSE}
+require(gridExtra)
+
+g <- ggplot(data = train.t, aes(fsize, fill = Survived)) + geom_bar(position = "dodge")
+g <- g + ggtitle("Counts of survivals and deads \n among family size in the train set")
+
+h <- ggplot(data = train.t, aes(Survived, fill = fsize)) + geom_bar(position = "dodge")
+h <- h + ggtitle("Counts of family size among survivals \n and deads in the train set")
+
+grid.arrange(g,h,ncol=2)
+```
+
+```{r}
+b <- table(train.t$fsize, train.t$Survived)
+b <- data.frame("0" = b[,1],"1" =  b[,2])
+b$prop <- round(b$X1/(b$X1+b$X0),4)
+b
+```
+
+## Features - Ticket
+
+```{r}
+str(train.t$Ticket)
+```
+As we can see, there are 681 levels for this factor variable. It means that, as there are no NA values, several passengers have the same ticket number.  
+By having a look at different ticket numbers, it seems that the ticket number links several passengers from the same family. I suppose that the ticket number depends on the command that has been made, and a same ticket number may be attributed to several passengers being part of the same command.  
+We will leave it this way as it should be useful to link several family members.  
+
+## Features - Fare
+
+```{r}
+str(train.t$Fare)
+length(unique(train.t$Fare))
+summary(train.t$Fare)
+```
+This is a numeric variable.  
+We can see that there are only 248 unique fares, meaning that several passengers paid the same fare.  
+The fares go from 0 to 512 $.  
+Let's first have a look at the distribution of fares.
+```{r, echo = FALSE, fig.align='center', fig.height= 3.5, fig.width= 9, message = FALSE}
+
+g <- ggplot(data = train.t, aes(Fare)) + geom_histogram(colour = "darkblue", fill = "white", binwidth = 3)
+g <- g + ggtitle("Counts of fares \n in the train set")
+
+h <- ggplot(data = train.t, aes(Fare)) + geom_histogram(colour = "darkblue", fill = "white", binwidth = 3)
+h <- h + ggtitle("Counts of fares \n in the train set")
+h <- h + coord_cartesian(xlim = c(0,200))
+
+l <- ggplot(data = train.t, aes(Fare)) + geom_histogram(colour = "darkblue", fill = "white", binwidth = 3)
+l <- l + ggtitle("Counts of fares \n in the train set")
+l <- l + coord_cartesian(xlim = c(0,100))
+
+grid.arrange(g,h,l,ncol=3)
+
+```
+
+```{r, echo = FALSE, fig.align='center', fig.height= 3.5, fig.width= 9, message = FALSE}
+
+g <- ggplot(data = train.t, aes(Fare)) + geom_histogram(colour = "darkblue", binwidth = 3, aes(fill = Pclass))
+g <- g + ggtitle("Counts of fares \n in the train set")
+g <- g + coord_cartesian(xlim = c(0,20))
+
+h <- ggplot(data = train.t, aes(Fare)) + geom_histogram(colour = "darkblue", binwidth = 3, aes(fill = Pclass))
+h <- h + ggtitle("Counts of fares \n in the train set")
+h <- h + coord_cartesian(xlim = c(20,50))
+
+l <- ggplot(data = train.t, aes(Fare)) + geom_histogram(colour = "darkblue", binwidth = 3, aes(fill = Pclass))
+l <- l + ggtitle("Counts of fares \n in the train set")
+l <- l + coord_cartesian(xlim = c(50,100))
+
+grid.arrange(g,h,l,ncol=3)
+
+```
+
+What is the fare related with?  
+```{r, echo = FALSE, fig.align='center', fig.height= 3.5, fig.width= 9, message = FALSE}
+
+g <- ggplot(data = train.t, aes(Fare, fill = Pclass)) + geom_bar(position = "dodge")
+g <- g + ggtitle("Counts of fares among classes \n in the train set")
+
+t <- train.t[-c(259,680,738),] # exclusion of 3 "outliers"
+
+h <- ggplot(data = t, aes(Pclass, Fare)) + geom_boxplot()
+h <- h + ggtitle("Counts of fares among classes \n in the train set")
+
+grid.arrange(g,h,ncol=2)
+
+```
+So, it seems that according to the class, the mean of fares are different.
+We could think of categorizing fares by group of range 10$ each.
+```{r}
+fgroup <- seq(0,100, by=10)
+fgroup <- c(fgroup, 1000)
+
+train.t$farecut <- cut(train.t$Fare, fgroup)
+train.t$farecut[is.na(train.t$farecut)] <- "(0,10]"
+
+```
+
+Let's make a plot to see the relationship between those new categories and survival.
+```{r, echo = FALSE, fig.align='center', fig.height= 4.5, fig.width= 10, message = FALSE}
+
+g <- ggplot(data = train.t, aes(farecut, fill = Survived)) + geom_bar(position = "dodge")
+g <- g + ggtitle("Counts of farecuts among survivals \n in the train set")
+g <- g + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+h <- ggplot(data = train.t, aes(Survived, fill = farecut)) + geom_bar(position = "dodge")
+h <- h + ggtitle("Counts of survivals among farecuts \n in the train set")
+
+grid.arrange(g,h,ncol=2)
+
+```
+
+## Features - Cabin
+
+```{r}
+str(train.t$Cabin)
+sum(train.t$Cabin == "")
+```
+This variable is a factor variable. There are 148 different cabins here.  
+As we can see, there are 687 observations that don't state any cabin.  
+Is the cabin number related to survival?
+
+```{r}
+subCab <- train.t[train.t$Cabin != "",]
+propCab <- round(sum(as.numeric(as.character(subCab$Survived)))/nrow(subCab),4)
+propCab
+```
+So there is a `r propCab*100`% chances that a passenger in a cabin will survive.
+Is there any difference regarding the letter at the beginning of the cabin number?
+```{r}
+train.t$cab <- mapply(substr, train.t$Cabin, 1,1)
+table(train.t$cab, train.t$Survived)
+```
+
+```{r, echo = FALSE, fig.align='center', fig.height= 4.5, fig.width= 10, message = FALSE}
+
+g <- ggplot(data = train.t, aes(cab, fill = Survived)) + geom_bar(position = "dodge")
+g <- g + ggtitle("Counts of farecuts among survivals \n in the train set")
+
+h <- ggplot(data = train.t, aes(Survived, fill = cab)) + geom_bar(position = "dodge")
+h <- h + ggtitle("Counts of survivals among farecuts \n in the train set")
+
+grid.arrange(g,h,ncol=2)
+
+```
+So it seems that for almost all type of cabins, passengers are more likely to survive in a cabin than passengers without any cabin.
+
+Let's transform this variable into a factor variable.
+```{r}
+train.t$cab <- factor(train.t$cab)
+```
+
+
+## Features - Embarked
+
+```{r}
+str(train.t$Embarked)
+summary(train.t$Embarked)
+```
+There are 3 levels for the `Embarked` variable. But we can also see that 2 observations doesn't have any Embarked value.
+Let's plot.
+```{r, echo = FALSE, fig.align='center', fig.height= 4.5, fig.width= 10, message = FALSE}
+
+g <- ggplot(data = train.t, aes(Embarked, fill = Survived)) + geom_bar(position = "dodge")
+g <- g + ggtitle("Counts of farecuts among survivals \n in the train set")
+
+h <- ggplot(data = train.t, aes(Survived, fill = Embarked)) + geom_bar(position = "dodge")
+h <- h + ggtitle("Counts of survivals among farecuts \n in the train set")
+
+grid.arrange(g,h,ncol=2)
+
+```
+So as we can see, passengers with Embarked = "S" are more likely to die than others.
+
+We have now covered all the different variables.
+
+We will now get back to the `Age` variable so that to be able to replace the NA values.
+
+## Replacing NA values for Age variable
+
+Reminder
+```{r, echo = FALSE, fig.align='center', fig.height= 3.5, fig.width= 9, message = FALSE}
+
+g <- ggplot(data = train.t, aes(AgeC, fill = Survived)) + geom_bar(position = "dodge")
+g <- g + ggtitle("Counts of Age among survivals \n and deads in the train set")
+g
+
+```
+
+Let's subset first the train set with all NA values for `AgeC` feature.
+```{r}
+AgeNA <- subset(train.t, is.na(train.t$AgeC))
+str(AgeNA)
+```
+We have 177 NA values from the `Age` variable.
+
+```{r, echo = FALSE, fig.align='center', fig.height= 3.5, fig.width= 9, message = FALSE}
+
+g <- ggplot(data = train.t, aes(Age, Fare, col = Pclass)) + geom_point()
+g <- g + ggtitle("Counts of Age among survivals \n and deads in the train set")
+g
+
+```
+Here we see that we cannot find a correlation between `Fare` and `Age`.  
+
+```{r, echo = FALSE, fig.align='center', fig.height= 3.5, fig.width= 9, message = FALSE}
+
+g <- ggplot(data = train.t, aes(Age, tit, col = Pclass)) + geom_point()
+g <- g + ggtitle("Counts of Age among survivals \n and deads in the train set")
+g
+
+```
+As we can see through the different plots we have tried, we cannot find any sufficient relationship between the `Age` variable and any other feature so that we have confidence that age is pretty well approximated.  
+Due to this fact, we will choose to fit a predictive model that doesn't take into account the `Age` variable, at first, and then, only for the observations for which we know the age, we will fit another model fitted to the previous prediciton and the `Age` variable.
+
+# Subsetting the train set to perform cross-validation
+
+Now that we have seen all the variables from the dataset and created any other feature needed, we are going to start model fitting.  
+First we have to subset the train set so that to perform the analysis.  
+We chose to practice the following subsetting :
+
+ - **training set** : **60%** of the train set. We will fit different models to this training set so that to choose the best one for the prediction.
+ - **cross-validation set** : **20%** of the train set. We will train the model fitted and choosen previously so that to optimize the tuning parameters.
+ - **testing set** : **20%** of the train set. We will use this set to make predictions with th best model choosen and tuned previously to evaluate the Out of Sample error and so evaluate the accuracy of our model.
+
+Let's subset the train set.
+```{r}
+library(caret)
+
+set.seed(1)
+inTrain <- createDataPartition(y=train$Survived, p=0.6, list=FALSE)
+valid <- createDataPartition(y = train$Survived[-inTrain], p=0.5, list = FALSE)
+training <- train[inTrain,]
+other <- train[-inTrain,]
+validating <- other[valid,]
+testing <- other[-valid,]
+```
+
+## Applying modifications to the training set
+
+Now, we are going to apply the modifications we have found useful during the exploratory analysis to the training set.
+```{r}
+# training
+training$Survived <- factor(training$Survived)
+training$Pclass <- factor(training$Pclass)
+training$Name <- as.character(training$Name)
+training$Title <- sapply(training$Name, FUN=function(x){strsplit(x, split='[,.]')[[1]][[2]]})
+training$Title <- sub(' ','',training$Title)
+training$Surname <- sapply(training$Name, FUN=function(x){strsplit(x, split='[,.]')[[1]][[1]]})
+training$tit <- "Other"
+training$tit[training$Title %in% c("Capt","Col","Don", "Dr","Jonkheer", "Major")] <- "Special"
+training$tit[training$Title %in% c("Lady", "Mme", "Mrs", "Ms", "the Countess")] <- "Mrs"
+training$tit[training$Title %in% c("Master")] <- "Master"
+training$tit[training$Title %in% c("Miss", "Mlle")] <- "Miss"
+training$tit[training$Title %in% c("Mr", "Sir")] <- "Mr"
+training$tit[training$Title %in% c("Rev")] <- "Rev"
+training$tit <- factor(training$tit)
+cat <- seq(0,80, by = 5)
+training$AgeC <- cut(training$Age, cat)
+training$famsize <- training$SibSp + training$Parch + 1
+training$fsize[training$famsize == 1] <- "[1]"
+training$fsize[training$famsize >1 & training$famsize<5] <- "[2 - 4]"
+training$fsize[training$famsize >4] <- "[5+]"
+training$fsize <- factor(training$fsize)
+fgroup <- seq(0,100, by=10)
+fgroup <- c(fgroup, 1000)
+training$farecut <- cut(training$Fare, fgroup)
+training$farecut[is.na(training$farecut)] <- "(0,10]"
+training$cab <- mapply(substr, training$Cabin, 1,1)
+training$cab <- factor(training$cab)
+
+str(training)
+```
+
+We then apply those same transformations to the validating and testing sets so that we are able to perform predictions on those sets.
+```{r}
+# validating
+validating$Survived <- factor(validating$Survived)
+validating$Pclass <- factor(validating$Pclass)
+validating$Name <- as.character(validating$Name)
+validating$Title <- sapply(validating$Name, FUN=function(x){strsplit(x, split='[,.]')[[1]][[2]]})
+validating$Title <- sub(' ','',validating$Title)
+validating$Surname <- sapply(validating$Name, FUN=function(x){strsplit(x, split='[,.]')[[1]][[1]]})
+validating$tit <- "Other"
+validating$tit[validating$Title %in% c("Capt","Col","Don", "Dr","Jonkheer", "Major")] <- "Special"
+validating$tit[validating$Title %in% c("Lady", "Mme", "Mrs", "Ms", "the Countess")] <- "Mrs"
+validating$tit[validating$Title %in% c("Master")] <- "Master"
+validating$tit[validating$Title %in% c("Miss", "Mlle")] <- "Miss"
+validating$tit[validating$Title %in% c("Mr", "Sir")] <- "Mr"
+validating$tit[validating$Title %in% c("Rev")] <- "Rev"
+validating$tit <- factor(validating$tit)
+cat <- seq(0,80, by = 5)
+validating$AgeC <- cut(validating$Age, cat)
+validating$famsize <- validating$SibSp + validating$Parch + 1
+validating$fsize[validating$famsize == 1] <- "[1]"
+validating$fsize[validating$famsize >1 & validating$famsize<5] <- "[2 - 4]"
+validating$fsize[validating$famsize >4] <- "[5+]"
+validating$fsize <- factor(validating$fsize)
+fgroup <- seq(0,100, by=10)
+fgroup <- c(fgroup, 1000)
+validating$farecut <- cut(validating$Fare, fgroup)
+validating$farecut[is.na(validating$farecut)] <- "(0,10]"
+validating$cab <- mapply(substr, validating$Cabin, 1,1)
+validating$cab <- factor(validating$cab)
+
+str(validating)
+```
+
+```{r}
+# testing
+testing$Survived <- factor(testing$Survived)
+testing$Pclass <- factor(testing$Pclass)
+testing$Name <- as.character(testing$Name)
+testing$Title <- sapply(testing$Name, FUN=function(x){strsplit(x, split='[,.]')[[1]][[2]]})
+testing$Title <- sub(' ','',testing$Title)
+testing$Surname <- sapply(testing$Name, FUN=function(x){strsplit(x, split='[,.]')[[1]][[1]]})
+testing$tit <- "Other"
+testing$tit[testing$Title %in% c("Capt","Col","Don", "Dr","Jonkheer", "Major")] <- "Special"
+testing$tit[testing$Title %in% c("Lady", "Mme", "Mrs", "Ms", "the Countess")] <- "Mrs"
+testing$tit[testing$Title %in% c("Master")] <- "Master"
+testing$tit[testing$Title %in% c("Miss", "Mlle")] <- "Miss"
+testing$tit[testing$Title %in% c("Mr", "Sir")] <- "Mr"
+testing$tit[testing$Title %in% c("Rev")] <- "Rev"
+testing$tit <- factor(testing$tit)
+cat <- seq(0,80, by = 5)
+testing$AgeC <- cut(testing$Age, cat)
+testing$famsize <- testing$SibSp + testing$Parch + 1
+testing$fsize[testing$famsize == 1] <- "[1]"
+testing$fsize[testing$famsize >1 & testing$famsize<5] <- "[2 - 4]"
+testing$fsize[testing$famsize >4] <- "[5+]"
+testing$fsize <- factor(testing$fsize)
+fgroup <- seq(0,100, by=10)
+fgroup <- c(fgroup, 1000)
+testing$farecut <- cut(testing$Fare, fgroup)
+testing$farecut[is.na(testing$farecut)] <- "(0,10]"
+testing$cab <- mapply(substr, testing$Cabin, 1,1)
+testing$cab <- factor(testing$cab)
+
+str(testing)
+```
+
+# Fitting models
+
+Now that we have shaped data conveniently to perform our analysis, we are going here to fit different models so that to make the best possible predictions regarding the probability of passengers'survival.  
+Here the **outcome**, e.g. the variable we want to predict, is `Survived` which takes only 2 values : 1 for survival and 0 for death.  
+Therefore, we will have to predict the probabilty of survival, depending on a set of features. This probability is therefore a value between 0 and 1.  
+Because of that, we can think of several prediction models that could fit to our data :
+
+ - Logistic regression
+ - Decision Trees
+ - Bagging
+ - Random Forest
+ - Boosting
+ - SVM (support Vector Machine)
+
+We are going to first set our **baseline** models, being the models to which we will compare our other models fitted so that to be sure that our predictions are better to those baseline models.  
+After defining those baseline models, we will start by creating a model from logistic regression. This will allow us to uderstand and interpret the relationship between features, and so to choose more wisely the features to take into account in our model.  
+Then, and finally, we will try the other models quoted above with the same features and check if the accuracy obtained is better or not.  
+
+## Baseline models
+
+Here are our 2 baseline models :
+
+ - **Gender model** : this one is based on the gender of the passengers, saying assigning to all passengers from the same gender the probability (found in the training data set) of this gender's survival.
+ - **Gender/Class model** : this one goes a liitle bit further than the previous one, this time taking into account the class where the passengers are from.
+
+### Baseline - Gender Model
+
+Let's have a look at the distribution of gender's survival in the training set.
+```{r, echo = FALSE, fig.align='center', fig.height= 3.5, fig.width= 9, message = FALSE}
+require(gridExtra)
+
+g <- ggplot(data = training, aes(Survived, fill = Sex)) + geom_bar(position = "dodge")
+g <- g + ggtitle("Counts of gender among survivals \n and deads in the train set")
+
+h <- ggplot(data = training, aes(Sex, fill = Survived)) + geom_bar(position = "dodge")
+h <- h + ggtitle("Counts of survivals and deads \n among gender in the train set")
+h <- h + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+grid.arrange(g,h,ncol=2)
+```
+So what we see here is that a male is more likely to die than a women.  
+Let's evaluate this probability.
+```{r}
+a <- table(training$Sex, training$Survived)
+a <- data.frame("0" = a[,1], "1" = a[,2])
+a$prob <- a$X1/(a$X1+a$X0)
+a
+```
+So, as we see here, a woman has around 72% chances of survival, whereas a man has only 18% chances of survival.  
+Therefore, this simple baseline gender model is going to state that a woman is going to survive and that a man is going to die.
+
+Let's create the prediciton's vector.
+```{r}
+# Predictions on training set
+trainingPredfit01 <- rep(0,nrow(training))
+trainingPredfit01[training$Sex == "female"] <- 1
+head(trainingPredfit01)
+# Predictions on validating set
+validatingPredfit01 <- rep(0,nrow(validating))
+validatingPredfit01[validating$Sex == "female"] <- 1
+# Predictions on testing set
+testingPredfit01 <- rep(0,nrow(testing))
+testingPredfit01[testing$Sex == "female"] <- 1
+```
+Let's now evaluate the percentage of errors on this 3 sets.
+```{r}
+# Predictions on training set
+trainingPredfit01_acc <- sum(trainingPredfit01 == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit01_acc <- sum(validatingPredfit01 == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit01_acc <- sum(testingPredfit01 == testing$Survived)/nrow(testing)
+
+trainingPredfit01_acc
+validatingPredfit01_acc
+testingPredfit01_acc
+```
+What we can see here first is that the prediction using the simple assumption is not so bad :
+
+ - training : `r round(trainingPredfit01_acc,4)*100`% of accuracy
+ - validating : `r round(validatingPredfit01_acc,4)*100`% of accuracy
+ - testing : `r round(testingPredfit01_acc,4)*100`% of accuracy
+
+As expected, we see that the accuracy obtained from the training set is higher than the one obtained from the validating set, which is expected because the model was fitted to the training set. But, we see that the accuracy is much better with the testing set. That's because the testing set must not be representative of the population distribution and so we have a different proportion of women or men who have survived in the testing set. We can check this.
+```{r}
+# Proportion of women in training set
+sum(as.numeric(as.character(training$Survived[training$Sex == "male"])))/nrow(training)
+# Proportion of women in validating set
+sum(as.numeric(as.character(validating$Survived[validating$Sex == "male"])))/nrow(validating)
+# Proportion of women in testing set
+sum(as.numeric(as.character(testing$Survived[testing$Sex == "male"])))/nrow(testing)
+```
+Here we see clearly that the proportion of men who have survived is lower in the testing set than in the others. That means that more men have died in the testing set and so our model fits better.  
+When submitting this model to KAGGLE, we can observe an error of 76,55% on the public board, and so we can assume that the distribution of survivals in the test set is closer to the distribution in the validating set. Therefore, it would be wiser to use the "validating" set as our "testing" set for all the models we are going to fit so that the error that we will find is closer to the one displayed on the KAGGLE Public board.
+As we haven't used neither the validating nor the testing set by now to fit anything, we can yet switch them. Let's do it.
+```{r}
+
+switching <- testing
+testing <- validating
+validating <- switching
+remove(switching)
+
+# Let's recalculate the accuracies on these new sets
+
+# Predictions on training set
+trainingPredfit01_acc <- sum(trainingPredfit01 == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit01 <- rep(0,nrow(validating))
+validatingPredfit01[validating$Sex == "female"] <- 1
+validatingPredfit01_acc <- sum(validatingPredfit01 == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit01 <- rep(0,nrow(testing))
+testingPredfit01[testing$Sex == "female"] <- 1
+testingPredfit01_acc <- sum(testingPredfit01 == testing$Survived)/nrow(testing)
+
+trainingPredfit01_acc
+validatingPredfit01_acc
+testingPredfit01_acc
+```
+So, here is what we've got:
+
+ - **training** : **`r round(trainingPredfit01_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit01_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit01_acc,4)*100`%** of accuracy
+
+
+### Baseline - Gender/Class Model
+
+Let's have a look at the distribution of gender's survival depending on the class in the training set.
+```{r, echo = FALSE, fig.align='center', fig.height= 3.5, fig.width= 9, message = FALSE}
+
+g <- ggplot(data = training, aes(Survived, fill = Sex)) + geom_bar(position = "dodge")
+g <- g + ggtitle("Counts of gender among survivals and deads \n depending on Pclass in the train set")
+g <- g + facet_grid(. ~ Pclass)
+g
+```
+
+Let's calculate the proportions and the predictions for this model.
+```{r}
+a1 <- table(training$Sex[training$Pclass == "1"], training$Survived[training$Pclass == "1"])
+a2 <- table(training$Sex[training$Pclass == "2"], training$Survived[training$Pclass == "2"])
+a3 <- table(training$Sex[training$Pclass == "3"], training$Survived[training$Pclass == "3"])
+
+a1 <- data.frame("0" = a1[,1], "1" = a1[,2])
+a1$prop <- round(a1$X1/(a1$X1 + a1$X0),4)
+a2 <- data.frame("0" = a2[,1], "1" = a2[,2])
+a2$prop <- round(a2$X1/(a2$X1 + a2$X0),4)
+a3 <- data.frame("0" = a3[,1], "1" = a3[,2])
+a3$prop <- round(a3$X1/(a3$X1 + a3$X0),4)
+
+a1
+a2
+a3
+
+trainingPredfit02 <- rep(0,nrow(training))
+trainingPredfit02[training$Sex == "female" & training$Pclass == "1"] <- 1
+trainingPredfit02[training$Sex == "female" & training$Pclass == "2"] <- 1
+
+validatingPredfit02 <- rep(0,nrow(validating))
+validatingPredfit02[validating$Sex == "female" & validating$Pclass == "1"] <- 1
+validatingPredfit02[validating$Sex == "female" & validating$Pclass == "2"] <- 1
+
+testingPredfit02 <- rep(0,nrow(testing))
+testingPredfit02[testing$Sex == "female" & testing$Pclass == "1"] <- 1
+testingPredfit02[testing$Sex == "female" & testing$Pclass == "2"] <- 1
+
+# Predictions on training set
+trainingPredfit02_acc <- sum(trainingPredfit02 == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit02_acc <- sum(validatingPredfit02 == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit02_acc <- sum(testingPredfit02 == testing$Survived)/nrow(testing)
+
+trainingPredfit02_acc
+validatingPredfit02_acc
+testingPredfit02_acc
+```
+In this model, we have seen that the only change in regard of the previous model is that, as the proportion of women surviving in class 3 is equal to the proportion of women dying, we have considered that women are likely to die in this class 3.
+
+This model leads to the following accuracies :
+
+ - **training** : **`r round(trainingPredfit02_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit02_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit02_acc,4)*100`%** of accuracy
+
+We can see that we have improved the testing accuracy, while the training accuracy stay the same, which is logical because the only change is that women are predicted dying in class 3, although the proportion of women dying is equal to the proportion of women surviving in class 3.
+
+Now we have set up our 2 baseline models, we will start fitting new models to improve predictions.
+
+## Logistic Regression
+
+Regarding all the different models we have quoted above in this document, logistic regression (and Decision Tree as well) is certainly the most interpretable model so that we can understand the interaction between features in predictions.
+
+First, we are going to check that we can retrieve results from previous baseline models by fitting a logistic regression with `Sex` variable and with `Sex` and `Pclass` variables. Then, we will try to get improvements.
+
+### Logisitic regression - comparison with baseline models
+
+We are going to check that we get the same accuracy by fitting logistic regression models with the same predictors than by using baseline models.  
+Let's first try to fit a model using only `Sex` feature.
+```{r}
+
+fit11 <- glm(Survived ~ Sex, data = training, family = "binomial")
+```
+As a binomial model, this gives us the odds for surviving or dying.  
+Using the `predict` function with `type = "response"` prevents us from having to transform the outcome as to get the probability.
+```{r}
+
+trainingPredfit11 <- predict(fit11, training, type = "response")
+validatingPredfit11 <- predict(fit11, validating, type = "response")
+testingPredfit11 <- predict(fit11, testing, type = "response")
+
+trainingPredfit11 <- ifelse(trainingPredfit11>0.5,1,0)
+validatingPredfit11 <- ifelse(validatingPredfit11>0.5,1,0)
+testingPredfit11 <- ifelse(testingPredfit11>0.5,1,0)
+
+# Predictions on training set
+trainingPredfit11_acc <- sum(trainingPredfit11 == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit11_acc <- sum(validatingPredfit11 == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit11_acc <- sum(testingPredfit11 == testing$Survived)/nrow(testing)
+
+trainingPredfit11_acc
+validatingPredfit11_acc
+testingPredfit11_acc
+
+```
+*Notice that we have here fixed thresholds to 0.5, meaning that if the probability calculated is greater than 0.5, the model will predict a survival (1). Else, the model will predict a death.*
+
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit11_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit11_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit11_acc,4)*100`%** of accuracy
+
+So, as expected, we get exactly the same accuracies than with the baseline models.
+
+We are now going to check that we get the same accuracy by fitting logistic regression models with the 2 predictors.
+```{r}
+
+fit12 <- glm(Survived ~ Sex + Pclass, data = training, family = "binomial")
+```
+
+```{r}
+
+trainingPredfit12 <- predict(fit12, training, type = "response")
+validatingPredfit12 <- predict(fit12, validating, type = "response")
+testingPredfit12 <- predict(fit12, testing, type = "response")
+
+trainingPredfit12 <- ifelse(trainingPredfit12>0.59,1,0)
+validatingPredfit12 <- ifelse(validatingPredfit12>0.59,1,0)
+testingPredfit12 <- ifelse(testingPredfit12>0.59,1,0)
+
+# Predictions on training set
+trainingPredfit12_acc <- sum(trainingPredfit12 == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit12_acc <- sum(validatingPredfit12 == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit12_acc <- sum(testingPredfit12 == testing$Survived)/nrow(testing)
+
+trainingPredfit12_acc
+validatingPredfit12_acc
+testingPredfit12_acc
+
+```
+*Notice that to get the same results as with baseline models, we have to fix thresholds to 0.59. That's beacause the model evaluate at 58.59% chances that a female survives while being in the third class. This value is representing the proportion that a woman survives while being in the third class in the testing set. But fixing the threshold in regard of this value is fitting our model to the testing set, which we don't want so that stay independent from the testing set. Therefore, we won't take this threshold into account in future models.*
+
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit12_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit12_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit12_acc,4)*100`%** of accuracy
+
+So, as expected, we get exactly the same accuracies than with the baseline models.
+
+We can notice that this adding `Pclass` feature hasn't improve at all our accuracy on the training set, beacause there is an equal probability for a woman to survive while being in the third class in the training set.
+
+
+### Logisitic regression - other models
+
+Now we are going to try to fit other logistic regression models by introducing other features in the formula.
+We are going to use the `step` function to choose features to include into the model.
+*Remember that we said above that we are keeping `AgeC` variable appart to fit the first model so that to use it eventually only for passengers for who we have got their age information.*
+```{r, warning = FALSE, cache = TRUE}
+null <- glm(Survived ~ 1, data = training, family = "binomial")
+full <- glm(Survived ~ Pclass + Sex + SibSp + Parch + Embarked + Surname + tit + fsize + farecut + cab, data = training, family = "binomial")
+
+step(null, scope=list(lower = null, upper = full), direction = "forward")
+
+```
+This procedure has shown to us that apparently the best combination is to use the following model.
+```{r}
+fit13 <- glm(Survived ~ tit + Pclass + fsize + Sex, family = "binomial", data = training)
+```
+Now, we are going to check if the same procedure, performed "backward", reaches the same result.
+```{r, warning=FALSE, cache = TRUE}
+step(full, data = training, direction = "backward")
+```
+Another model may be of interest here as we can see, and we are going to fit it so that to check it's accuracy further.
+```{r}
+fit14 <- glm(Survived ~ tit + Pclass + fsize + Parch + farecut, family = "binomial", data = training)
+```
+
+Finally, let's try the same procedure but in both directions.
+```{r, warning=FALSE, cache=TRUE}
+step(null, scope=list(upper = full), data = training, direction = "both")
+```
+With this procedure, we get the same model as the fit23 one.
+
+Let's check the accuracy of these models.
+```{r}
+
+trainingPredfit13 <- predict(fit13, training, type = "response")
+validatingPredfit13 <- predict(fit13, validating, type = "response")
+testingPredfit13 <- predict(fit13, testing, type = "response")
+
+trainingPredfit13 <- ifelse(trainingPredfit13>0.5,1,0)
+validatingPredfit13 <- ifelse(validatingPredfit13>0.5,1,0)
+testingPredfit13 <- ifelse(testingPredfit13>0.5,1,0)
+
+# Predictions on training set
+trainingPredfit13_acc <- sum(trainingPredfit13 == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit13_acc <- sum(validatingPredfit13 == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit13_acc <- sum(testingPredfit13 == testing$Survived)/nrow(testing)
+
+trainingPredfit13_acc
+validatingPredfit13_acc
+testingPredfit13_acc
+
+```
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit13_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit13_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit13_acc,4)*100`%** of accuracy
+
+```{r}
+
+trainingPredfit14 <- predict(fit14, training, type = "response")
+validatingPredfit14 <- predict(fit14, validating, type = "response")
+testingPredfit14 <- predict(fit14, testing, type = "response")
+
+trainingPredfit14 <- ifelse(trainingPredfit14>0.5,1,0)
+validatingPredfit14 <- ifelse(validatingPredfit14>0.5,1,0)
+testingPredfit14 <- ifelse(testingPredfit14>0.5,1,0)
+
+# Predictions on training set
+trainingPredfit14_acc <- sum(trainingPredfit14 == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit14_acc <- sum(validatingPredfit14 == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit14_acc <- sum(testingPredfit14 == testing$Survived)/nrow(testing)
+
+trainingPredfit14_acc
+validatingPredfit14_acc
+testingPredfit14_acc
+
+```
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit14_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit14_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit14_acc,4)*100`%** of accuracy
+
+**Conclusions on logistic regression models** :
+
+ - First, we can see that we have significantly improved our accuracy from baseline models.
+ - Second, we can see that the 13 model seems to get better results than the 14 model.
+ - Finally, We are going to see by tuning the parameters if we can improve again our model so that to get a better accuracy.
+We here so keep the **model 13**, **fit13**, to keep on with logistic regression.
+
+Now, let's look at Decision Trees models.
+
+### Decision Trees - comparison with baseline models
+
+We are going to check that we get the same accuracy by fitting Decision Trees models with the same predictors than by using baseline models.  
+Let's first try to fit a model using only `Sex` feature.
+```{r, cache = TRUE, , warning = FALSE, message = FALSE}
+library(caret)
+fit21 <- train(Survived ~ Sex, data = training, method = "rpart")
+```
+
+```{r}
+
+trainingPredfit21 <- predict(fit21, training)
+validatingPredfit21 <- predict(fit21, validating)
+testingPredfit21 <- predict(fit21, testing)
+
+# Predictions on training set
+trainingPredfit21_acc <- sum(trainingPredfit21 == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit21_acc <- sum(validatingPredfit21 == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit21_acc <- sum(testingPredfit21 == testing$Survived)/nrow(testing)
+
+trainingPredfit21_acc
+validatingPredfit21_acc
+testingPredfit21_acc
+
+```
+
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit21_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit21_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit21_acc,4)*100`%** of accuracy
+
+So, as expected, we get exactly the same accuracies than with the baseline models.
+
+We are going to check that we get the same accuracy by fitting Decision Trees models with the two predictors.
+```{r,cache = TRUE, warning = FALSE, message = FALSE}
+library(caret)
+fit22 <- train(Survived ~ Sex + Pclass, data = training, method = "rpart")
+```
+
+```{r}
+
+trainingPredfit22 <- predict(fit22, training)
+validatingPredfit22 <- predict(fit22, validating)
+testingPredfit22 <- predict(fit22, testing)
+
+# Predictions on training set
+trainingPredfit22_acc <- sum(trainingPredfit22 == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit22_acc <- sum(validatingPredfit22 == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit22_acc <- sum(testingPredfit22 == testing$Survived)/nrow(testing)
+
+trainingPredfit22_acc
+validatingPredfit22_acc
+testingPredfit22_acc
+
+```
+
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit22_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit22_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit22_acc,4)*100`%** of accuracy
+
+So, as expected, we don't get the same accuracies because we haven't define any threshold and so the decision tree exploit probabilities in regard of the ones from the training set.
+
+### Decision Trees - other models
+
+What we want to do here is to select all the features that can help us to predict correctly the survival of passengers. We therefore will fit a Decision Tree with all features and then call `VarImp` function so that to see the importance of each feature and then choose those we are interested with.
+```{r, cache=TRUE, warning = FALSE, message = FALSE}
+library(caret)
+fit23 <- train(Survived ~ Pclass + Sex + SibSp + Parch + Embarked + Surname + tit + fsize + farecut + cab, data = training, method = "rpart")
+importance <- varImp(fit23)
+importance
+```
+
+Now we are going to see if we obtain the same order in significant features if we apply a cross-validation process to the tree.
+```{r, cache=TRUE, warning = FALSE, message = FALSE}
+control <- trainControl(method = "cv", 10)
+fit24 <- train(Survived ~ Pclass + Sex + SibSp + Parch + Embarked + Surname + tit + fsize + farecut + cab, data = training, method = "rpart", trControl = control)
+importance2 <- varImp(fit24)
+importance2
+```
+We see that we get exactly the same importance vector.
+
+So, what we can do here is select from the top features and fit another model.
+```{r, cache=TRUE, warning = FALSE, message = FALSE}
+fit25 <- train(Survived ~ Pclass + Sex + tit + fsize + SibSp + Parch + Embarked , data = training, method = "rpart")
+```
+
+```{r}
+
+trainingPredfit25 <- predict(fit25, training)
+validatingPredfit25 <- predict(fit25, validating)
+testingPredfit25 <- predict(fit25, testing)
+
+# Predictions on training set
+trainingPredfit25_acc <- sum(trainingPredfit25 == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit25_acc <- sum(validatingPredfit25 == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit25_acc <- sum(testingPredfit25 == testing$Survived)/nrow(testing)
+
+trainingPredfit25_acc
+validatingPredfit25_acc
+testingPredfit25_acc
+
+```
+
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit25_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit25_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit25_acc,4)*100`%** of accuracy
+
+So here we see that this last model using Decision Tree presents no improvement in comparison of baseline models. We won't go farther with this model but we will try to fit others like Random Forest for example and see if we get an improvement.
+
+
+### Bagging
+
+Let's try bagging to see if there is an improvement.
+```{r, cache=TRUE, warning = FALSE, message = FALSE}
+fit31 <- train(Survived ~ Pclass + Sex + SibSp + Parch + Embarked + Surname + tit + fsize + farecut + cab, data = training, method = "treebag")
+importance <- varImp(fit31)
+importance
+```
+
+```{r, cache=TRUE, warning = FALSE, message = FALSE}
+fit32 <- train(Survived ~ tit + Sex + Pclass + fsize + SibSp + Parch, data = training, method = "treebag")
+```
+
+```{r}
+
+trainingPredfit32 <- predict(fit32, training)
+validatingPredfit32 <- predict(fit32, validating)
+testingPredfit32 <- predict(fit32, testing)
+
+# Predictions on training set
+trainingPredfit32_acc <- sum(trainingPredfit32 == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit32_acc <- sum(validatingPredfit32 == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit32_acc <- sum(testingPredfit32 == testing$Survived)/nrow(testing)
+
+trainingPredfit32_acc
+validatingPredfit32_acc
+testingPredfit32_acc
+
+```
+
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit32_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit32_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit32_acc,4)*100`%** of accuracy
+
+So, we see here that we have improved the accuracy, and that the feature selection has lead to almost the same features.  
+We will now try Random Forest.
+
+
+### Random Forest
+
+```{r, cache=TRUE, warning = FALSE, message = FALSE}
+fit41 <- train(Survived ~ Pclass + Sex + SibSp + Parch + Embarked  + tit + fsize + farecut + cab, data = training, method = "rf", ntree = 200)
+importance <- varImp(fit41)
+importance
+```
+We can see here that all the features have relative importance.
+
+```{r}
+
+trainingPredfit41 <- predict(fit41, training)
+validatingPredfit41 <- predict(fit41, validating)
+testingPredfit41 <- predict(fit41, testing)
+
+# Predictions on training set
+trainingPredfit41_acc <- sum(trainingPredfit41 == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit41_acc <- sum(validatingPredfit41 == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit41_acc <- sum(testingPredfit41 == testing$Survived)/nrow(testing)
+
+trainingPredfit41_acc
+validatingPredfit41_acc
+testingPredfit41_acc
+
+```
+
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit41_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit41_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit41_acc,4)*100`%** of accuracy
+
+So here we get no improvement in regard of the bagging model.
+
+
+### Boosting
+
+```{r, cache=TRUE, warning = FALSE, message = FALSE}
+fit51 <- train(Survived ~ Pclass + Sex + SibSp + Parch + Embarked  + tit + fsize + farecut + cab, data = training, method = "gbm", verbose = FALSE)
+importance <- varImp(fit51)
+importance
+```
+We can see here that all the features have relative importance.
+
+```{r}
+
+trainingPredfit51 <- predict(fit51, training)
+validatingPredfit51 <- predict(fit51, validating)
+testingPredfit51 <- predict(fit51, testing)
+
+# Predictions on training set
+trainingPredfit51_acc <- sum(trainingPredfit51 == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit51_acc <- sum(validatingPredfit51 == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit51_acc <- sum(testingPredfit51 == testing$Survived)/nrow(testing)
+
+trainingPredfit51_acc
+validatingPredfit51_acc
+testingPredfit51_acc
+
+```
+
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit51_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit51_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit51_acc,4)*100`%** of accuracy
+
+So here we get no improvement in regard of the bagging model.
+
+**Conclusion before tunning** :
+
+ - **logistic regression** : training accuracy = `r round(trainingPredfit13_acc,4)*100`%
+ - **decision tree** : training accuracy = `r round(trainingPredfit25_acc,4)*100`%
+ - **bagging with tree** : training accuracy = `r round(trainingPredfit32_acc,4)*100`%
+ - **random forest** : training accuracy = `r round(trainingPredfit41_acc,4)*100`%
+ - **boosting** : training accuracy = `r round(trainingPredfit51_acc,4)*100`%
+
+
+## Tuning parameters
+
+Here we are going to try different parameters with each model selected befor so that improve predictions.
+
+### Tuning - Logistic Regression
+
+First, let's get back the model fitted before.
+```{r}
+summary(fit13)
+```
+
+We have selected the model with the best AIC using the function `step`.
+Now, what if there were some outliers that could be drawn out of the model fitting so that to get a better model.
+Let's check if we can find some outliers.
+```{r}
+out1 <- cooks.distance(fit13)
+# Let's find out observations where values are outside the 95 percentile.
+out1 <- sort(out1, decreasing = TRUE)
+b <- c()
+for (i in 1:10){
+    a <- names(out1)[i]
+    b[i] <- which(rownames(training) == a)
+}
+outliers <- training[b,]
+
+```
+What if we just take those observations out of the model fitting.
+```{r}
+fit13o <- glm(Survived ~ tit + Pclass + fsize + Sex, family = "binomial", data = training[-b,])
+```
+
+```{r}
+
+trainingPredfit13o <- predict(fit13o, training, type = "response")
+validatingPredfit13o <- predict(fit13o, validating, type = "response")
+testingPredfit13o <- predict(fit13o, testing, type = "response")
+
+trainingPredfit13o <- ifelse(trainingPredfit13o>0.5,1,0)
+validatingPredfit13o <- ifelse(validatingPredfit13o>0.5,1,0)
+testingPredfit13o <- ifelse(testingPredfit13o>0.5,1,0)
+
+# Predictions on training set
+trainingPredfit13o_acc <- sum(trainingPredfit13o == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit13o_acc <- sum(validatingPredfit13o == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit13o_acc <- sum(testingPredfit13o == testing$Survived)/nrow(testing)
+
+trainingPredfit13o_acc
+validatingPredfit13o_acc
+testingPredfit13o_acc
+
+```
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit13o_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit13o_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit13o_acc,4)*100`%** of accuracy
+
+As we can see in the results, we loose accuracy by taking those "outliers" out of the model.
+
+Let's now print the plot so that we can see ow the fitted values behave in regard of the residuals.
+```{r, echo = FALSE, fig.align='center', fig.height= 6, fig.width= 9, message = FALSE}
+par(mfrow=c(2,2))
+plot(fit13)
+```
+
+```{r, echo = FALSE, fig.align='center', fig.height= 4, fig.width= 4, message = FALSE}
+par(mfrow=c(1,1))
+plot(fit13$residuals, predict(fit13, training, type = "response"))
+```
+We can observe that there are some residuals that have an absolute value superior to 10. Let's investigate those residuals.
+```{r}
+res <- abs(fit13$residuals)
+res <- sort(res, decreasing = TRUE)
+resMax <- res[res >10]
+length(resMax)
+```
+24 observations present a residual that has an absolute value > 10.
+Why?
+```{r}
+resMaxNames <- names(resMax)
+s <- which(rownames(training) %in% resMaxNames)
+sub <- training[s,]
+```
+When we have a look at those observations, we can see that :
+
+ - Most of them are men : 20 over 24, 83%
+ - Most of them have a family size of 1 : 20 over 24, 83%
+ - Most of them have a farecut between 0 and 10 : 16 over 24, 67%
+ - Most of them have Embarked = "S" : 18 over 24, 75%
+ - Most of them have no Parch : 21 over 24, 87,5%
+ - Most of them have no SibSp : 20 over 24, 83%
+ - Most of them are from the third class : 21 over 24, 87,5%
+
+So first, this model is saying that a passenger has the least important chances of survival when he is a male, from the third class, and he is alone, and maybe when he has embarked from S. That seems consistant.  
+Then, we can see that the model doesn't fit well when we are at those "extreme" values because the residuals are larger there.  
+
+And, the most important, it's that most of those people have survived. That means that, despite their "disadvantage", cumuling the probability of non survival, they have survived. They are non representative of the model we have fitted.
+
+We could think of getting them out of the model so that to adjust our coefficients and maybe improve predictions.  
+Let's have a try.
+
+```{r}
+fit13o <- glm(Survived ~ tit + Pclass + fsize + Sex, family = "binomial", data = training[-s,])
+```
+
+```{r}
+
+trainingPredfit13o <- predict(fit13o, training, type = "response")
+validatingPredfit13o <- predict(fit13o, validating, type = "response")
+testingPredfit13o <- predict(fit13o, testing, type = "response")
+
+trainingPredfit13o <- ifelse(trainingPredfit13o>0.5,1,0)
+validatingPredfit13o <- ifelse(validatingPredfit13o>0.5,1,0)
+testingPredfit13o <- ifelse(testingPredfit13o>0.5,1,0)
+
+# Predictions on training set
+trainingPredfit13o_acc <- sum(trainingPredfit13o == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit13o_acc <- sum(validatingPredfit13o == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit13o_acc <- sum(testingPredfit13o == testing$Survived)/nrow(testing)
+
+trainingPredfit13o_acc
+validatingPredfit13o_acc
+testingPredfit13o_acc
+
+```
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit13o_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit13o_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit13o_acc,4)*100`%** of accuracy
+
+As we can see in the results, we have improved a little bit our accuracy on the training set.
+
+Now, we are going to try adding the `Age` variable and combine with another logistic regression model to see if it leads to improvement in the accuracy.
+```{r}
+training_new <- cbind(training, pred = trainingPredfit13o)
+training_new$pred <- factor(training_new$pred)
+str(training_new)
+training_sub <- training_new[-s,]
+
+fit13oComb <- glm(Survived ~ pred + Age, family = "binomial", data = training_sub[!is.na(training_sub$Age),])
+```
+
+```{r}
+validating_new <- cbind(validating, pred = validatingPredfit13o)
+validating_new$pred <- factor(validating_new$pred)
+testing_new <- cbind(testing, pred = testingPredfit13o)
+testing_new$pred <- factor(testing_new$pred)
+
+trainingPredfit13oComb <- rep(NA, nrow(training))
+validatingPredfit13oComb <- rep(NA, nrow(validating))
+testingPredfit13oComb <- rep(NA, nrow(testing))
+
+trainingPredfit13oComb[!is.na(training_new$Age)] <- predict(fit13oComb, training_new[!is.na(training_new$Age),], type = "response")
+validatingPredfit13oComb[!is.na(validating_new$Age)] <- predict(fit13oComb, validating_new[!is.na(validating_new$Age),], type = "response")
+testingPredfit13oComb[!is.na(testing_new$Age)] <- predict(fit13oComb, testing_new[!is.na(testing_new$Age),], type = "response")
+
+trainingPredfit13oComb <- ifelse(trainingPredfit13oComb>0.5,1,0)
+validatingPredfit13oComb <- ifelse(validatingPredfit13oComb>0.5,1,0)
+testingPredfit13oComb <- ifelse(testingPredfit13oComb>0.5,1,0)
+
+trainingPredfit13oComb[is.na(training_new$Age)] <- as.numeric(as.character(training_new$pred[is.na(training_new$Age)]))
+validatingPredfit13oComb[is.na(validating_new$Age)] <- as.numeric(as.character(validating_new$pred[is.na(validating_new$Age)]))
+testingPredfit13oComb[is.na(testing_new$Age)] <- as.numeric(as.character(testing_new$pred[is.na(testing_new$Age)]))
+
+# Predictions on training set
+trainingPredfit13oComb_acc <- sum(trainingPredfit13oComb == training_new$Survived)/nrow(training_new)
+# Predictions on validating set
+validatingPredfit13oComb_acc <- sum(validatingPredfit13oComb == validating_new$Survived)/nrow(validating_new)
+# Predictions on testing set
+testingPredfit13oComb_acc <- sum(testingPredfit13oComb == testing_new$Survived)/nrow(testing_new)
+
+trainingPredfit13oComb_acc
+validatingPredfit13oComb_acc
+testingPredfit13oComb_acc
+
+```
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit13oComb_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit13oComb_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit13oComb_acc,4)*100`%** of accuracy
+
+What we can see here is that adding the `Age` variable doesn't add any value to the model as the accuracy stays the same.
+We can suppose that the variance that me be added by the `Age` variable is already inserted into the `tit` variable.
+
+Let's now try to fit another models.
+
+### Tuning - Trees
+
+Let's get back the models fitted before :
+
+ - **fit25 - Decision Tree**
+ - **fit32 - Decision Tree with Bagging**
+ - **fit41 - Random Forest**
+ - **fit51 - Boosting**
+
+Looking at the Decision Tree, we can first plot the tree so that to have a better understanding of what it's doing.
+```{r, message  FALSE, warning= FALSE, fig.align= 'center', fig.height= 5, fig.width= 5}
+library(rattle)
+fancyRpartPlot(fit25$finalModel)
+```
+
+```{r, cache=TRUE, warning = FALSE, message = FALSE}
+library(caret)
+
+TreeGrid <- expand.grid(.cp = seq(0.0001, 0.02, by = 0.0001))
+
+trControl <- trainControl(method = "cv", number = 10, classProbs = FALSE)
+
+fit25t <- train(Survived ~ Pclass + Sex + tit + fsize + SibSp + Parch + Embarked , data = training, method = "rpart", metric = "Accuracy", maximize = TRUE, trControl = trControl, tuneGrid = TreeGrid)
+```
+Here, we see by looking at the model fitted that the accuracy is maximal with a cp = 0.004 (Accuracy = 0.8263)  
+`cp` is a complexity parameter. By default, it's set to 0.01. Any split that does not decrease the overall lack of fit by a factor of cp is not attempted.  
+```{r}
+TreeGrid <- expand.grid(.cp = 0.004)
+
+trControl <- trainControl(method = "cv", number = 10, classProbs = FALSE)
+
+fit25t <- train(Survived ~ Pclass + Sex + tit + fsize + SibSp + Parch + Embarked , data = training, method = "rpart", metric = "Accuracy", maximize = TRUE, trControl = trControl, tuneGrid = TreeGrid)
+
+fit25t
+```
+
+
+```{r}
+fancyRpartPlot(fit25t$finalModel)
+```
+
+Let's see with the **Bagging**
+```{r, cache=TRUE, warning = FALSE, message = FALSE}
+#TreeGrid <- expand.grid(.cp = 0.001)
+set.seed(1)
+trControl <- trainControl(method = "cv", number = 10, classProbs = FALSE)
+
+fit32t <- train(Survived ~ tit + Sex + Pclass + fsize + SibSp + Parch + Embarked, data = training, method = "treebag", metric = "Accuracy", maximize = TRUE, trControl = trControl, nbag = 10)
+
+```
+
+```{r}
+
+trainingPredfit32t <- predict(fit32t, training)
+validatingPredfit32t <- predict(fit32t, validating)
+testingPredfit32t <- predict(fit32t, testing)
+
+# Predictions on training set
+trainingPredfit32t_acc <- sum(trainingPredfit32t == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit32t_acc <- sum(validatingPredfit32t == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit32t_acc <- sum(testingPredfit32t == testing$Survived)/nrow(testing)
+
+trainingPredfit32t_acc
+validatingPredfit32t_acc
+testingPredfit32t_acc
+
+```
+
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit32t_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit32t_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit32t_acc,4)*100`%** of accuracy
+
+So for instance, we have significantly improved our acuracy.
+
+Let's see with the **Bagging**, **bagFDA**
+```{r, cache=TRUE, warning = FALSE, message = FALSE}
+#TreeGrid <- expand.grid(.cp = 0.001)
+set.seed(1)
+# trControl <- trainControl(method = "cv", number = 3)
+# grid <- expand.grid(mfinal = 10, maxdepth = 5)
+fit33t <- train(Survived ~ tit + Sex + Pclass + fsize + SibSp + Parch + Embarked, data = training, method = "bagFDA", tuneGrid = data.frame(.degree = 4,.nprune = 9))
+
+```
+After looking for different values of nprune and degree, it appears that the optimals values were nprune = 9 and degree = 4.
+
+```{r}
+
+trainingPredfit33t <- predict(fit33t, training)
+validatingPredfit33t <- predict(fit33t, validating)
+testingPredfit33t <- predict(fit33t, testing)
+
+# Predictions on training set
+trainingPredfit33t_acc <- sum(trainingPredfit33t == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit33t_acc <- sum(validatingPredfit33t == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit33t_acc <- sum(testingPredfit33t == testing$Survived)/nrow(testing)
+
+trainingPredfit33t_acc
+validatingPredfit33t_acc
+testingPredfit33t_acc
+
+```
+
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit33t_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit33t_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit33t_acc,4)*100`%** of accuracy
+
+
+Let's see with the **Random Forest**
+```{r, cache=TRUE, warning = FALSE, message = FALSE}
+#library(randomForest)
+set.seed(1)
+trControl <- trainControl(method = "cv", number = 5)
+grid <- expand.grid(mtry = 5)
+
+fit42t <- train(Survived ~ Pclass + Sex + SibSp + Parch + Embarked  + tit + fsize + farecut + cab, data = training, trainControl = trControl, method = "rf", tuneGrid = grid, ntree = 200)
+
+```
+
+```{r}
+
+trainingPredfit42t <- predict(fit42t, training)
+validatingPredfit42t <- predict(fit42t, validating)
+testingPredfit42t <- predict(fit42t, testing)
+
+# Predictions on training set
+trainingPredfit42t_acc <- sum(trainingPredfit42t == training$Survived)/nrow(training)
+# Predictions on validating set
+validatingPredfit42t_acc <- sum(validatingPredfit42t == validating$Survived)/nrow(validating)
+# Predictions on testing set
+testingPredfit42t_acc <- sum(testingPredfit42t == testing$Survived)/nrow(testing)
+
+trainingPredfit42t_acc
+validatingPredfit42t_acc
+testingPredfit42t_acc
+
+```
+
+Here are our accuracies with this model :
+
+ - **training** : **`r round(trainingPredfit42t_acc,4)*100`%** of accuracy
+ - **validating** : **`r round(validatingPredfit42t_acc,4)*100`%** of accuracy
+ - **testing** : **`r round(testingPredfit42t_acc,4)*100`%** of accuracy
+
+### SUMMARY
+
+Model       | Type of model             | Training Accuracy | Validating Accuracy   | Testing Accuracy   
+------------|---------------------------|-------------------|-----------------------|-----------------
+fit01       | Gender model              | 78.32%            | 83.15%                | 75.28%
+fit02       | Gender/Class model        | 78.32%            | 80.34%                | 78.09%
+fit11       | Logistic Regression       | 78.32%            | 83.15%                | 75.28%
+fit12       | Logistic Regression       | 78.32%            | 80.34%                | 78.09%
+__fit13__   | Logistic Regression       | 82.8%             | 86.52%                | __81.46%__
+fit14       | Logistic Regression       | 82.24%            | 85.39%                | 80.34%
+fit21       | Decision Tree (rpart)     | 78.32%            | 83.15%                | 75.28%
+fit22       | Decision Tree (rpart)     | 78.32%            | 83.15%                | 75.28%
+fit25       | Decision Tree (rpart)     | 80.75%            | 84.83%                | 78.09%
+fit32       | Bagging Tree              | 84.11%            | 85.39%                | 80.90%
+fit41       | Random Forest             | 82.99%            | 85.96%                | 78.65%
+fit51       | Boosting (gbm)            | 80.93%            | 84.83%                | 76.97%
+__fit13o__  | Logistic Regression       | 83.18%            | 86.52%                | __81.46%__
+__fit32t__  | Bagging Tree (Tree Bag)   | 84.86%            | 86.52%                | __82.02%__
+__fit33t__  | Bagging Tree (Bag FDA)    | 83.18%            | 86.52%                | __81.46%__
+fit42t      | Random Forest             | 88.41%            | 85.96%                | 78.65%
+
+

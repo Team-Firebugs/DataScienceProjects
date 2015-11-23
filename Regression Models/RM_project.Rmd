@@ -1,5 +1,5 @@
 ---
-output: pdf_document
+output: html_document
 ---
 ---
 title: "Regression models project"
@@ -128,14 +128,23 @@ As we can see from those plots :
 
  - Finally, the Residuals vs Leverage points out those outliers, but indicates that those outliers are within the confidence interval (so not really outliers).
 
-\pagebreak
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
+&nbsp;
 
-\begin{center}APPENDIX\end{center}
+--------------
+
+<center> <h1>APPENDIX 1</h1> </center>
 
 -------
-
-\underline{Figure 1}
-```{r, echo=TRUE}
+&nbsp;
+<center>**Figure 1**</center>
+```{r, echo=TRUE, fig.align='center'}
 library(ggplot2)
 
 g <- ggplot(mtcars, aes(x = factor(am), y = mpg)) + geom_violin()
@@ -143,22 +152,23 @@ g <- g + ggtitle("MPG vs Transmisison (am)")
 g
 ```
 
-\underline{Figure 2}
+&nbsp;
+<center>**Figure 2**</center>
 ```{r, echo=FALSE}
 summary(fit1)
 ```
-
-\underline{Figure 3}
+&nbsp;
+<center>**Figure 3**</center>
 ```{r, echo=FALSE}
 anova(fit1,fit2, fit3)
 ```
-
-\underline{Figure 4}
+&nbsp;
+<center>**Figure 4**</center>
 ```{r, echo=FALSE}
 summary(fit3)
 ```
-
-\underline{Figure 5}
+&nbsp;
+<center>**Figure 5**</center>
 ```{r, echo=TRUE, fig.align= 'center'}
 par(mfrow=c(2,2))
 plot(fit3)
